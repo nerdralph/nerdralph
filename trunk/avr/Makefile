@@ -4,9 +4,17 @@ DEVICE = attiny85
 
 CC = avr-gcc -mmcu=$(DEVICE)
 #CFLAGS = -mmcu=$(DEVICE)
+# LIBS = BBUart.o
 CFLAGS += -Os -Wall
+# CFLAGS += -L $(LIBS)
 
-all: $(TARGET) $(TARGET).hex
+.PHONY: force
+compiler_flags: force
+	echo '$(CFLAGS)' | cmp -s - $@ || echo '$(CFLAGS)' > $@
+
+$(LIBS): compiler_flags
+
+all: $(LIBS) $(TARGET) $(TARGET).hex
 
 $(TARGET).hex: $(TARGET)
 	avr-objcopy -j .text -j .data -O ihex $< $@
@@ -15,4 +23,7 @@ $(TARGET).hex: $(TARGET)
 	avr-objcopy -j .text -j .data -O ihex $< $@
 
 flash:  $(TARGET).hex
-	../avrdude-6.0.1/avrdude.exe -p $(DEVICE) -c usbasp -U flash:w:$(TARGET).hex
+	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c usbasp -U flash:w:$(TARGET).hex
+
+clean:
+	rm $(LIBS) $(TARGET) $(TARGET).hex

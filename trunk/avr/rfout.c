@@ -4,7 +4,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
-void main()
+int main()
 {
   // OSCCAL -= 6; // gives ~8Mhz @ 5V
   OSCCAL += 23; // gives 9.86Mhz
