@@ -3,6 +3,10 @@
  * @version: $Id$
  */
 
+#ifndef F_CPU
+#error F_CPU undefined
+#endif
+
 extern void TxByte(unsigned char);
 extern unsigned char RxByte();
 

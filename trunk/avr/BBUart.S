@@ -3,10 +3,6 @@
  * @version: $Id$
  */
 
-#ifndef F_CPU
-#error F_CPU undefined
-#endif
-
 /* needed for <avr/io.h> to give io constant addresses */
 #define __SFR_OFFSET 0
 #include <avr/io.h>
