@@ -30,39 +30,39 @@ TxByte:
 	in r0, UART_Port
 	ldi r25, 3						; stop bit & idle state
 TxLoop:
-	; 9 cycle loop + delay
+	; 7 cycle loop + delay = 6 + 3*DelayArg
 	ldi delayArg, TXDELAY
-	rcall Delay3Cycle				; delay + 3 cycles for rcall
+TxDelay:
+    dec delayArg
+	brne Delay3Cycle
 	bst r24, 0						; store lsb in T
 	bld r0, UART_Tx
 	lsr r25
 	ror r24							; 2-byte shift register
 	out UART_Port, r0
-    nop                             ; make loop a multiple of 3 cycles
 	brne TxLoop
 	ret
 
 ; receive byte into r24
 .global RxByte
 RxByte:
-	ldi r24, 0x80					; bit shift counter
-WaitStart:
 	sbic UART_Port-2, UART_Rx		; wait for start edge
-	rjmp WaitStart
+	rjmp RxByte
+	ldi r24, 0x80					; bit shift counter
 	ldi delayArg, RXSTART			; 1.5 bit delay
 RxBit:
+	; 7 cycle loop + delay = 6 + 6 + 3*DelayArg
 	rcall Delay3Cycle				; delay and clear carry
-	; 6 cycle loop
 	ldi delayArg, RXDELAY 
-	sbic UART_Port-2, UART_Rx
-	sec
 	ror r24
+	sbic UART_Port-2, UART_Rx
+	ori r24, 0x80
+    nop                             ; match 7-cycle Tx loop
 	brcc RxBit
 	; fall into delay for stop bit
 
 ; delay (3 cycle * delayArg) -1 + 4 cycles (ret instruction)
-; also clears carry (subi instead of dec) to save 1 instr in RxBit
 Delay3Cycle:
-	subi delayArg, 1
+	dec delayArg
 	brne Delay3Cycle
 	ret
