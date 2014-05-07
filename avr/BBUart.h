@@ -27,13 +27,13 @@ extern unsigned char RxByte();
 
 // txbit takes 3*RXDELAY + 15 cycles
 #define BIT_CYCLES DIVIDE_ROUNDED(F_CPU,BAUD_RATE) 
-#define TXDELAYCOUNT DIVIDE_ROUNDED(BIT_CYCLES - 6, 3)
+#define TXDELAYCOUNT DIVIDE_ROUNDED(BIT_CYCLES - 7, 3)
 
 #define RXSTART_CYCLES DIVIDE_ROUNDED(3*F_CPU,2*BAUD_RATE) 
 // 1st bit sampled 3*RXDELAY + 11 cycles after start bit begins
-#define RXSTARTCOUNT DIVIDE_ROUNDED(RXSTART_CYCLES - 12, 3)
+#define RXSTARTCOUNT DIVIDE_ROUNDED(RXSTART_CYCLES - 13, 3)
 // rxbit takes 3*RXDELAY + 12 cycles
-#define RXDELAYCOUNT DIVIDE_ROUNDED(BIT_CYCLES - 12, 3)
+#define RXDELAYCOUNT DIVIDE_ROUNDED(BIT_CYCLES - 13, 3)
 
 #if ( RXSTARTCOUNT > 255 )
 #error baud rate too low - must be >= 19200 @ 8Mhz, 2400 @ 1Mhz
