@@ -30,7 +30,7 @@ TxByte:
 	in r0, UART_Port
 	ldi r25, 3						; stop bit & idle state
 TxLoop:
-	; 7 cycle loop + delay = 6 + 3*DelayArg
+	; 8 cycle loop + delay = 7 + 3*DelayArg
 	ldi delayArg, TXDELAY
 TxDelay:
     dec delayArg
@@ -51,7 +51,7 @@ RxByte:
 	ldi r24, 0x80					; bit shift counter
 	ldi delayArg, RXSTART			; 1.5 bit delay
 RxBit:
-	; 7 cycle loop + delay = 6 + 6 + 3*DelayArg
+	; 7 cycle loop + delay = 7 + 6 + 3*DelayArg
 	rcall Delay3Cycle				; delay and clear carry
 	ldi delayArg, RXDELAY 
 	lsr r24
