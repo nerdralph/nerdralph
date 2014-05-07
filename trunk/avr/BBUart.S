@@ -34,7 +34,7 @@ TxLoop:
 	ldi delayArg, TXDELAY
 TxDelay:
     dec delayArg
-	brne Delay3Cycle
+	brne TxDelay
 	bst r24, 0						; store lsb in T
 	bld r0, UART_Tx
 	lsr r25
@@ -54,7 +54,7 @@ RxBit:
 	; 7 cycle loop + delay = 6 + 6 + 3*DelayArg
 	rcall Delay3Cycle				; delay and clear carry
 	ldi delayArg, RXDELAY 
-	ror r24
+	lsr r24
 	sbic UART_Port-2, UART_Rx
 	ori r24, 0x80
     nop                             ; match 7-cycle Tx loop

@@ -36,7 +36,7 @@ extern unsigned char RxByte();
 #define RXDELAYCOUNT DIVIDE_ROUNDED(BIT_CYCLES - 12, 3)
 
 #if ( RXSTARTCOUNT > 255 )
-#error baud rate too low - must be >= 14400 @ 8Mhz, 1800 @ 1Mhz
+#error baud rate too low - must be >= 19200 @ 8Mhz, 2400 @ 1Mhz
 #endif
 
 asm(".global TXDELAY" );
