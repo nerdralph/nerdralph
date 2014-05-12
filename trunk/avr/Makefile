@@ -28,6 +28,9 @@ $(LIBS): compiler_flags
 BBUart.a: BBUart.o
 	avr-ar r BBUart.a BBUart.o
 
+sniff: sniff.o sniffASM.o
+	$(CC) $^ -o $@
+
 #$(TARGET).hex: $(TARGET)
 #	avr-objcopy -j .text -j .data -O ihex $< $@
 
