@@ -1,18 +1,18 @@
+/* Ralph Doncaster 2014 public domain software
+ * 1s timer ISR
+ */
 
-/* needed for <avr/io.h> to give io constant addresses */
+; needed for <avr/io.h> to give io constant addresses
 #define __SFR_OFFSET 0
 #include <avr/io.h>
 
-.section .bss
-; must define dummy values for variables or else no
-; space will be reserved and all will refer to RAMSTART
-ovfl_count:
-            .byte 0
+; 1 byte variable in RAM
+.lcomm ovfl_count, 1
 
-; __system_time defined in avr/time.h
+; 4 byte (long) global variable in RAM
+; __system_time to match definition avr/time.h
+.lcomm __system_time, 4
 .global __system_time
-__system_time:
-            .long 0
 
 .section .text
 .global TIMER2_COMPA_vect
