@@ -2,6 +2,7 @@
 DEVICE = attiny84
 #DEVICE = attiny88
 DEVICE = atmega328p
+SPEED = 16000000
 #DEVICE = atmega8
 # or export DEVICE=atxxxx in shell 
 # export TARGET=app
@@ -10,12 +11,12 @@ DEVICE = atmega328p
 PROGRAMMER = arduino -P com16
 
 # CC = avr-g++ --std=c++11 -mmcu=$(DEVICE) -DF_CPU=8000000
-CPP = avr-g++ --std=c++11 -mmcu=$(DEVICE) -DF_CPU=8000000
-CC = avr-gcc -mmcu=$(DEVICE) -DF_CPU=8000000
+#CPP = avr-g++ --std=c++11 -mmcu=$(DEVICE)
+CC = avr-gcc -mmcu=$(DEVICE) -DF_CPU=$(SPEED)
 LDLIBS = the-shit.a
 #CFLAGS += -fwhole-program -mrelax
 #CFLAGS += -Os -Wall -flto -finline-limit=2
-CFLAGS += -Os -Wall -flto -mrelax
+CFLAGS += -Os -Wall -flto -mrelax -fno-inline
 #CFLAGS += -Os -Wall -mrelax
 #LDFLAGS +=
 CFLAGS += -Wno-main
