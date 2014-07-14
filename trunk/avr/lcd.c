@@ -62,8 +62,14 @@ void lcd_clear(){
     lcd_command(LCD_CLR);
 }
 
+void lcd_gotoxy(byte x, byte y){
+    byte addr = 0;
+    if (y == 1) addr = 40;
+    lcd_command(LCD_DDRAM + addr + x);
+}
+
 void lcd_newline(){
-    lcd_command(0x80 + 40); // move to 2nd line
+    lcd_command(LCD_DDRAM + 40); // move to start of 2nd line
 }
 
 inline void lcd_init() {
@@ -93,7 +99,6 @@ inline void lcd_init() {
 
     // entry mode increment, don't shift
     lcd_command(LCD_ENTRY_MODE|LCD_ENTRY_INC);
-    //lcd_command(0x80); // DDRAM address 0 
 
     // display on, no cursor
     lcd_command(LCD_ON|LCD_ON_DISPLAY);
