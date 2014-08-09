@@ -1,7 +1,8 @@
 /* optimized half-duplex high-speed serial uart implementation
  * @author: Ralph Doncaster 2014
  * @version: $Id$
- * soft UART has only 0.6% timing error at default 115200 baud rate @8Mhz
+ * soft UART has only 0.8% timing error at default 115200 baud rate @8Mhz
+ * and 2.1% timing error at 230400.
  * To use UART, include BBUart.h in your C program, compile BBUart.S,
  * and link BBUart.o with your program.
  *
@@ -12,8 +13,14 @@
 #error F_CPU undefined
 #endif
 
-extern void TxByte(unsigned char);
-extern unsigned char RxByte();
+#ifdef __cplusplus
+extern "C" {
+#endif
+    void TxByte(unsigned char);
+    unsigned char RxByte();
+#ifdef __cplusplus
+}
+#endif
 
 #define STR1(x) #x
 #define STR(x) STR1(x)
@@ -40,9 +47,25 @@ extern unsigned char RxByte();
 #endif
 
 asm(".global TXDELAY" );
-asm(".equ TXDELAY, " STR(TXDELAYCOUNT) );
 asm(".global RXSTART" );
-asm(".equ RXSTART, " STR(RXSTARTCOUNT) );
 asm(".global RXDELAY" );
-asm(".equ RXDELAY, " STR(RXDELAYCOUNT) );
+
+// dummy function defines no code
+// hack to define absolute linker symbols using C macro calculations
+static void dummy() __attribute__ ((naked));
+static void dummy() __attribute__ ((used));
+static void dummy(){
+asm (
+    ".equ TXDELAY, %[txdcount]\n"
+    ::[txdcount] "M" (TXDELAYCOUNT)
+    );
+asm (
+    ".equ RXSTART, %[rxscount]\n"
+    ::[rxscount] "M" (RXSTARTCOUNT)
+    );
+asm (
+    ".equ RXDELAY, %[rxdcount]\n"
+    ::[rxdcount] "M" (RXDELAYCOUNT)
+    );
+}
 
