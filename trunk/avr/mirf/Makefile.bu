@@ -1,0 +1,15 @@
+#DEVICE = attiny84
+DEVICE = attiny88
+#DEVICE = atmega328p
+#CPU_SPEED = 16000000L
+CPU_SPEED = 8000000
+#DEVICE = atmega8
+# TARGET = rxRf
+
+
+the-shit.a: mirf.o spi.o
+	avr-ar rcs $@ $^
+
+include ../avr.mk
+
+
