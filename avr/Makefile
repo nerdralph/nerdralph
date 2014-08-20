@@ -2,8 +2,8 @@
 #DEVICE = attiny84
 #DEVICE = attiny88
 DEVICE = atmega328p
-#CPU_SPEED = 16000000L
-CPU_SPEED = 8000000
+CPU_SPEED = 16000000L
+#CPU_SPEED = 8000000
 #DEVICE = atmega8
 # or export DEVICE=atxxxx in shell 
 # export TARGET=app
@@ -20,12 +20,12 @@ PROGRAMMER = usbasp -B 4
 #CC = avr-gcc -mmcu=$(DEVICE) -DF_CPU=$(CPU_SPEED) -DBIT_TIME=$(SERIAL_BIT_TIME)
 CC = avr-gcc -mmcu=$(DEVICE) -DF_CPU=$(CPU_SPEED)
 LDLIBS = the-shit.a
-#CFLAGS += -fwhole-program -mrelax
-#CFLAGS += -Os -Wall
-CFLAGS += -Os -Wall -flto -mrelax -fno-inline
-#CFLAGS += -Os -Wall -mrelax
+#CFLAGS += -fwhole-program
+CFLAGS += -Os -Wall -mrelax
+CFLAGS += -flto
 #LDFLAGS +=
-CFLAGS += -Wno-main --std=c99
+CFLAGS += -Wno-main
+CFLAGS += --std=gnu99
 
 .PHONY: force
 
@@ -34,7 +34,7 @@ all: $(LDLIBS) $(TARGET) $(TARGET).hex
 compiler_flags: force
 	echo '$(CFLAGS)' | cmp -s - $@ || echo '$(CFLAGS)' > $@
 
-$(LIBS): compiler_flags
+# $(LDLIBS): compiler_flags
 
 #BBUart.a: BBUart.o
 #	avr-ar r BBUart.a BBUart.o
@@ -59,4 +59,4 @@ fuses:
 	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER) -U lfuse:w:0xe2:m
 
 clean:
-	rm $(LIBS) $(TARGET) $(TARGET).hex *.o
+	rm -f $(LDLIBS) $(TARGET) $(TARGET).hex *.o
