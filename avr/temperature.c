@@ -48,15 +48,19 @@ char temperature()
         tempRaw += (doADC() - 273);    
     }
     ADCSRA = 0;                         // turn off ADC
+
+    // a known offset could be used instead of the calibrated value
     return ((tempRaw/256) - eeprom_read_byte(&temp_offset) ) ;
 }
 
 // temperature at programming time
 #define AIR_TEMPERATURE 25
-__attribute__ ((constructor)) void calibrate_temp (void)
-// using section .init8 makes for smaller code, but doesn't work with
-// link-time optimization -flto
-//__attribute__ ((naked)) __attribute__ ((section (".init8"))) void calibrate_temp (void)
+//__attribute__ ((constructor)) void calibrate_temp (void)
+// using section .init8 makes for smaller code than constructor
+__attribute__ ((naked))\
+__attribute__ ((used))\
+__attribute__ ((section (".init8")))\
+void calibrate_temp (void)
 {
     if ( eeprom_read_byte(&temp_offset) == 0xff)
     {
