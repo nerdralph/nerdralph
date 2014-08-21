@@ -21,6 +21,7 @@ PROGRAMMER = usbasp -B 4
 CC = avr-gcc -mmcu=$(DEVICE) -DF_CPU=$(CPU_SPEED)
 LDLIBS = the-shit.a
 #CFLAGS += -fwhole-program
+CFLAGS += -ffunction-sections -Wl,--gc-sections
 CFLAGS += -Os -Wall -mrelax
 CFLAGS += -flto
 #LDFLAGS +=

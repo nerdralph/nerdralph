@@ -21,6 +21,7 @@
 .extern RXSTART
 .extern RXDELAY
 
+.section .text.transmit,"ax",@progbits
 ; transmit byte contained in r24
 ; AVR305 has 1 cycle of jitter per bit, this has none
 .global TxByte
@@ -43,6 +44,7 @@ TxDelay:
 	brne TxLoop
 	ret
 
+.section .text.receive,"ax",@progbits
 ; receive byte into r24
 .global RxByte
 RxByte:
