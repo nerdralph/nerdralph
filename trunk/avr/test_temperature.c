@@ -5,10 +5,10 @@
  */
 
 #include <avr/io.h>
-#include "temperature.h"
+#include "libs/temperature/temperature.h"
 
 
-#include "BBUart.h"
+#include "libs/bbuart/BBUart.h"
 #include <stdio.h>
 #include <util/delay.h>
 
