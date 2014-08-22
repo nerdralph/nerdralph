@@ -29,8 +29,8 @@ CFLAGS += -flto
 CFLAGS += -Wno-main
 CFLAGS += --std=gnu99
 
-LIB_CSRC = $(shell ls libs/*.c)
-LIB_ASMSRC = $(shell ls libs/*.S)
+LIB_CSRC = $(shell ls libs/*/*.c)
+LIB_ASMSRC = $(shell ls libs/*/*.S)
 LIBOBJ = $(LIB_CSRC:.c=.o) $(LIB_ASMSRC:.S=.o)
 
 .PHONY: force
