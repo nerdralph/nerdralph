@@ -2,6 +2,7 @@
  * 1s timer
  */
 
+#include <stdint.h>
 #define byte unsigned char
 
 #include <avr/io.h>
@@ -13,6 +14,15 @@ extern byte ovfl_count;
 
 // to-do: map prescaler /32 thru /256 to 2^CSn
 #define CSDIV256 ((1<<CS22) | (1<<CS21))
+
+unsigned long getSeconds()
+{
+    unsigned long system_time;
+    cli();
+    system_time = __system_time;
+    sei();
+    return system_time;
+}
 
 void main()
 {
@@ -33,5 +43,6 @@ void main()
         PORTB = ovfl_count & 0xff;
         PINB = 0x01;            // toggle pin for debug
 #endif
+        PORTB = getSeconds() & 0xff;
     }
 }
