@@ -13,13 +13,14 @@ SERIAL_BAUD = 115200
 SERIAL_BIT_TIME = $(CPU_SPEED)/$(SERIAL_BAUD)
 
 PROGRAMMER = usbasp -B 4
+PROGRAMMER = usbasp
 #PROGRAMMER = arduino -P com16
 
 # CC = avr-g++ --std=c++11 -mmcu=$(DEVICE) -DF_CPU=8000000
 #CPP = avr-g++ --std=c++11 -mmcu=$(DEVICE)
 #CC = avr-gcc -mmcu=$(DEVICE) -DF_CPU=$(CPU_SPEED) -DBIT_TIME=$(SERIAL_BIT_TIME)
 CC = avr-gcc -mmcu=$(DEVICE) -DF_CPU=$(CPU_SPEED)
-LDLIBS = the-shit.a
+LDLIBS = libs/libs.a
 #CFLAGS += -fwhole-program
 CFLAGS += -ffunction-sections -Wl,--gc-sections
 CFLAGS += -Os -Wall -mrelax
@@ -27,6 +28,10 @@ CFLAGS += -flto
 #LDFLAGS +=
 CFLAGS += -Wno-main
 CFLAGS += --std=gnu99
+
+LIB_CSRC = $(shell ls libs/*.c)
+LIB_ASMSRC = $(shell ls libs/*.S)
+LIBOBJ = $(LIB_CSRC:.c=.o) $(LIB_ASMSRC:.S=.o)
 
 .PHONY: force
 
@@ -40,7 +45,7 @@ compiler_flags: force
 #BBUart.a: BBUart.o
 #	avr-ar r BBUart.a BBUart.o
 
-the-shit.a: BBUart.o t32isr.o temperature.o
+libs/libs.a: $(LIBOBJ)
 	avr-ar rcs $@ $^
 
 sniff: sniff.o sniffASM.o
@@ -61,3 +66,6 @@ fuses:
 
 clean:
 	rm -f $(LDLIBS) $(TARGET) $(TARGET).hex *.o
+
+debug:
+	echo CFLAGS = $(CFLAGS)
