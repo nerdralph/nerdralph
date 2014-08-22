@@ -80,12 +80,12 @@ void lcd_write_nibble( const byte data ) {
     
     SET_CTRL_BIT(EN_PIN);
 
-#ifdef LCD_ISR_SAFE
+#if ( LCD_ISR_SAFE == 1 )
     cli();
 #endif
     tmp = DATA_PORT & 0x0F;
     DATA_PORT = tmp | (data&0xF0);
-#ifdef LCD_ISR_SAFE
+#if ( LCD_ISR_SAFE == 1 )
     sei();
 #endif
 
@@ -98,11 +98,11 @@ void lcd_write( const byte data, const char rs) {
 
     lcd_write_nibble(data);
     lcd_write_nibble(data << 4);
-#ifdef LCD_ISR_SAFE
+#if ( LCD_ISR_SAFE == 1 )
     cli();
 #endif
     DATA_PORT |= (0xF0 | RS_PIN);    // high while idle
-#ifdef LCD_ISR_SAFE
+#if ( LCD_ISR_SAFE == 1 )
     sei();
 #endif
     lcd_delay();          // wait for instruction to complete
