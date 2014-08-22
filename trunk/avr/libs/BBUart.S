@@ -29,7 +29,7 @@ TxByte:
 	sbi UART_Port-1, UART_Tx		; set Tx line to output
 	cbi UART_Port, UART_Tx			; start bit
 	in r0, UART_Port
-	ldi r25, 3						; stop bit & idle state
+	ldi r25, 7						; stop bit & idle state
 TxLoop:
 	; 8 cycle loop + delay = 7 + 3*DelayArg
 	ldi delayArg, TXDELAY
