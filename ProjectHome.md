@@ -1,0 +1,1 @@
+Code I've posted on my blog http://nerdralph.blogspot.com/ and other open-source code I've written.
