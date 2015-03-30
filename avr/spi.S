@@ -29,7 +29,7 @@ spiBit:
     brne spiBit
     ret
 
-.global spiByte
+.global spiFast
 spiFast:
     in r25, SPIPORT     ; save port state
     andi r25, ~clkpinmask
