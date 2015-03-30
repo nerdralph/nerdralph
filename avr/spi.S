@@ -1,3 +1,7 @@
+/* AVR software SPI in optimized assembler
+ * @author: Ralph Doncaster 2015
+ */
+
 /* needed for <avr/io.h> to give io constant addresses */
 #define __SFR_OFFSET 0
 #include <avr/io.h>
