@@ -48,7 +48,7 @@ wget -c  http://ftp.gnu.org/gnu/binutils/${binutilstar}
 # Get avr-libc
 #
 #
-wget -c  http://download.savannah.gnu.org/releases/avr-libc/avr-libc-user-manual-${avrlibcver}.pdf.bz2
+#wget -c  http://download.savannah.gnu.org/releases/avr-libc/avr-libc-user-manual-${avrlibcver}.pdf.bz2
 wget -c  http://download.savannah.gnu.org/releases/avr-libc/${avrlibctar}
 
 # GCC Pre-requisites - see https://gcc.gnu.org/install/prerequisites.html
@@ -57,18 +57,18 @@ wget -c  http://download.savannah.gnu.org/releases/avr-libc/${avrlibctar}
 # Get GMP
 #
 #wget -c http://ftp.sunet.se/pub/gnu/gmp/gmp-4.2.4.tar.bz2
-wget -c http://ftp.sunet.se/pub/gnu/gmp/${gmptar}
+#wget -c http://ftp.sunet.se/pub/gnu/gmp/${gmptar}
 
 #
 # Get MPFR
 #
 #wget -c http://www.mpfr.org/mpfr-2.4.1/${mpfrtar}
-wget -c http://ftp.sunet.se/pub/gnu/mpfr/${mpfrtar}
+#wget -c http://ftp.sunet.se/pub/gnu/mpfr/${mpfrtar}
 
 #
 # Get MPC - Needed for GCC >= 4.5.0
 #
-wget -c http://www.multiprecision.org/mpc/download/${mpctar}
+#wget -c http://www.multiprecision.org/mpc/download/${mpctar}
 
 #
 #Get GCC
