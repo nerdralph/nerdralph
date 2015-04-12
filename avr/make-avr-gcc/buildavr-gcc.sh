@@ -9,7 +9,7 @@
 # Updated script to add new devices 2005/03/26
 
 # modified and updated 2014,2015 by Ralph Doncaster to build only
-# avr-gcc and avr-libc
+# binutils, avr-gcc and avr-libc
 
 # Copyright (C) 2003-2004 Rod Moffitt rod@rod.info http://rod.info
 #
@@ -68,10 +68,13 @@ prefix=/usr/local/avr
 # build log file - see this if any errors occur
 buildlog=/tmp/buildavr.log
 
-# end of configuration
-
 # what are we building for?
 target=avr
+
+# default configure flags
+configureflags='--prefix=$prefix --quiet --with-dwarf2 --disable-nls --disable-werror CFLAGS="-Wno-format-security "'
+
+# end of configuration
 
 
 function buildandinstall()
@@ -147,8 +150,8 @@ function buildandinstall()
 #
 #
 #
-#   cd $prefix/source
-#
+   cd $prefix/source
+
    if [ ! -e ${base}/ok-build-${binutilsbase} ] 
    then
    echo "($0) installing binutils source"
@@ -174,7 +177,7 @@ function buildandinstall()
 
    echo "($0) configuring binutils source"
    ../../source/${binutilsbase}/configure -v --target=${target} \
-      --prefix=$prefix --with-gnu-ld --with-gnu-as --quiet --enable-install-libbfd --with-dwarf2 --disable-werror CFLAGS="-Wno-format-security "
+      --prefix=$prefix --quiet --enable-install-libbfd --with-dwarf2 --disable-werror CFLAGS="-Wno-format-security "
    cerror "binutils configuration failed"
 
 #  Hack to prevent docs to be build , it will fail if texinfo is v5.xx (as in Mint 17)
@@ -254,7 +257,7 @@ function buildandinstall()
    #cd ${gccbase}/mpfr
 #
 #
-   echo "($0) patching MPFR source"
+#   echo "($0) patching MPFR source"
 #
 
 #for file in $patchdir/${mpfrbase}/*; do
@@ -273,7 +276,7 @@ function buildandinstall()
 
    echo "($0) configuring GCC source"
    ../../source/${gccbase}/configure -v --target=${target} --disable-nls \
-      --prefix=$prefix --with-gnu-ld --with-gnu-as --enable-languages="c,c++" --disable-libssp --with-dwarf2 
+      --prefix=$prefix --enable-languages="c,c++" --with-dwarf2 
    cerror "GCC configuration failed"
 
 #  Hack to prevent docs to be build , it will fail if texinfo is v5.xx (as in Mint 17)
