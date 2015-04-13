@@ -3,7 +3,7 @@ language: cpp
 compiler: gcc
 
 script:
-- sudo apt-get install -qq flex bison
+- sudo apt-get install flex bison binutils-avr
 - cd avr/make-avr-gcc
 - ./getfiles.gcc.sh
 - touch ./ok-build-binutils-2.24
