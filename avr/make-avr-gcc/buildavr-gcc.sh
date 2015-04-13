@@ -155,7 +155,7 @@ function buildandinstall()
    if [ ! -e ${base}/ok-build-${binutilsbase} ] 
    then
    echo "($0) installing binutils source"
-   tar xvjf $archive/${binutilstar}
+   tar xf $archive/${binutilstar}
    cerror "binutils source installation failed"
 
    cd ${binutilsbase}
@@ -206,19 +206,19 @@ function buildandinstall()
    if [ ! -e ${base}/ok-build-${gccbase} ] 
    then
    echo "($0) installing GMP source"
-   tar xvjf $archive/${gmptar}
+   tar xf $archive/${gmptar}
    cerror "GMP source installation failed"
 
    echo "($0) installing mpfr source"
-   tar xvjf $archive/${mpfrtar}
+   tar xf $archive/${mpfrtar}
    cerror "MPFR source installation failed"
 
    echo "($0) installing mpc source"
-   tar xvzf $archive/${mpctar}
+   tar xf $archive/${mpctar}
    cerror "MPC source installation failed"
 
    echo "($0) installing GCC source"
-   tar xvjf $archive/${gcccoretar}
+   tar xf $archive/${gcccoretar}
    cerror "GCC source installation failed"
 
    #
@@ -298,7 +298,7 @@ function buildandinstall()
    if [ ! -e ${base}/ok-build-${avrlibcbase} ] 
    then
    echo "($0) installing libc"
-   tar xvjf $archive/${avrlibctar}
+   tar xf $archive/${avrlibctar}
    cerror "libc source installation failed"
 
 #
