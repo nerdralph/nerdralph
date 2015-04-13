@@ -1,0 +1,9 @@
+sudo: true
+language: cpp
+compiler: gcc
+
+script:
+- sudo apt-get install -qq flex bison
+- cd avr/make-avr-gcc
+- ./getfiles.gcc.sh
+- yes|./buildavr-gcc.sh prefix=~/avr
