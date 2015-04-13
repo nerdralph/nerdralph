@@ -63,7 +63,7 @@ source ${base}/package-versions
 
 # GNU tools will be installed under this directory
 #prefix=$archive/avr
-prefix=/usr/local/avr
+prefix=${prefix:-/usr/local/avr}
 
 # build log file - see this if any errors occur
 buildlog=/tmp/buildavr.log
@@ -276,7 +276,7 @@ function buildandinstall()
 
    echo "($0) configuring GCC source"
    ../../source/${gccbase}/configure -v --target=${target} --disable-nls \
-      --prefix=$prefix --enable-languages="c,c++" --with-dwarf2 
+      --with-gnu-ld --with-gnu-as --prefix=$prefix --enable-languages="c,c++" --with-dwarf2 
    cerror "GCC configuration failed"
 
 #  Hack to prevent docs to be build , it will fail if texinfo is v5.xx (as in Mint 17)
