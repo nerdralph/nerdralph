@@ -7,4 +7,4 @@ script:
 - cd avr/make-avr-gcc
 - ./getfiles.gcc.sh
 - touch ./ok-build-binutils-2.24
-- yes|./buildavr-gcc.sh prefix=~/avr
+- ./buildavr-gcc.sh prefix=~/avr < `yes`
