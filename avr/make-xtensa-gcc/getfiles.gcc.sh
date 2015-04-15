@@ -46,18 +46,18 @@ wget -cq  http://ftp.gnu.org/gnu/binutils/${binutilstar}
 # Get GMP
 #
 #wget -cq http://ftp.sunet.se/pub/gnu/gmp/gmp-4.2.4.tar.bz2
-wget -cq http://ftp.sunet.se/pub/gnu/gmp/${gmptar}
+wget -cq http://ftp.sunet.se/pub/gnu/gmp/${gmptar} &
 
 #
 # Get MPFR
 #
 #wget -cq http://www.mpfr.org/mpfr-2.4.1/${mpfrtar}
-wget -cq http://ftp.sunet.se/pub/gnu/mpfr/${mpfrtar}
+wget -cq http://ftp.sunet.se/pub/gnu/mpfr/${mpfrtar} &
 
 #
 # Get MPC 
 #
-wget -cq http://www.multiprecision.org/mpc/download/${mpctar}
+wget -cq http://www.multiprecision.org/mpc/download/${mpctar} &
 
 #
 #Get GCC
