@@ -343,7 +343,7 @@ function cerror()
    if [ $? -ne 0 ];
    then
       cecho "$RED$1$NC\n"
-      exit
+      exit $?
    fi
 }
 
