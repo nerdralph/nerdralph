@@ -136,17 +136,17 @@ function buildandinstall()
 
    if [ ! -e ${base}/ok-build-${gccbase} ] 
    then
-#   echo "($0) installing GMP source"
-#   tar xf $archive/${gmptar}
-#   cerror "GMP source installation failed"
+   echo "($0) installing GMP source"
+   tar xf $archive/${gmptar}
+   cerror "GMP source installation failed"
 
-#   echo "($0) installing mpfr source"
-#   tar xf $archive/${mpfrtar}
-#   cerror "MPFR source installation failed"
+   echo "($0) installing mpfr source"
+   tar xf $archive/${mpfrtar}
+   cerror "MPFR source installation failed"
 
-#   echo "($0) installing mpc source"
-#   tar xf $archive/${mpctar}
-#   cerror "MPC source installation failed"
+   echo "($0) installing mpc source"
+   tar xf $archive/${mpctar}
+   cerror "MPC source installation failed"
 
    echo "($0) installing GCC source"
    tar xf $archive/${gcccoretar}
@@ -155,17 +155,17 @@ function buildandinstall()
    #
    # Copy GMP & MPFR sources into GCC directory
    #
-#   rm -rf ${gccbase}/gmp
-#   rm -rf ${gccbase}/mpfr
-#   rm -rf ${gccbase}/mpc
-#   mkdir -p ${gccbase}/gmp
-#   mkdir -p ${gccbase}/mpfr
-#   mkdir -p ${gccbase}/mpc
+   rm -rf ${gccbase}/gmp
+   rm -rf ${gccbase}/mpfr
+   rm -rf ${gccbase}/mpc
+   mkdir -p ${gccbase}/gmp
+   mkdir -p ${gccbase}/mpfr
+   mkdir -p ${gccbase}/mpc
 
-#   cp -rfp ${gmpbase}/* ${gccbase}/gmp
-#   cp -rfp ${mpfrbase}/* ${gccbase}/mpfr
-#   cp -rfp ${mpcbase}/* ${gccbase}/mpc
-#
+   cp -rfp ${gmpbase}/* ${gccbase}/gmp
+   cp -rfp ${mpfrbase}/* ${gccbase}/mpfr
+   cp -rfp ${mpcbase}/* ${gccbase}/mpc
+
    cd $prefix/source
    cd ${gccbase}
 #
