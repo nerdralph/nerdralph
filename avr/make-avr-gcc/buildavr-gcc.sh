@@ -71,14 +71,14 @@ buildlog=/tmp/buildavr.log
 # what are we building for?
 target=avr
 
-# default configure flags
-commonconfig=--target=$target --prefix=$prefix --quiet --with-dwarf2 --disable-nls
-
 # end of configuration
 
 
 function buildandinstall()
 {
+   # default configure flags
+   commonconfig=--target=$target --prefix=$prefix --quiet --with-dwarf2 --disable-nls
+
    mkdir -p $prefix/source $prefix/build
 
    cd $prefix/source
