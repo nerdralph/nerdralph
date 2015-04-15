@@ -72,7 +72,7 @@ buildlog=/tmp/buildavr.log
 target=avr
 
 # default configure flags
-configureflags='--prefix=$prefix --quiet --with-dwarf2 --disable-nls --disable-werror CFLAGS="-Wno-format-security "'
+commonconfig=--target=$target --prefix=$prefix --quiet --with-dwarf2 --disable-nls
 
 # end of configuration
 
@@ -82,35 +82,6 @@ function buildandinstall()
    mkdir -p $prefix/source $prefix/build
 
    cd $prefix/source
-
-#   if [ ! -e ${base}/ok-build-${avaricebase} ] 
-#   then
-#   echo "($0) installing avarice source"
-#   tar xvjf $archive/${avaricetar}
-#   cerror "avarice source installation failed"
-
-#   cd ${avaricebase}
-
-#   echo "($0) patching avarice source"
-#
-#   patch -p0 < $archive/avarice-2.10-bug2812023.patch
-#   cerror "avarice patching failed"
-
-#   mkdir -p ../../build/${avaricebase}
-#   cd ../../build/${avaricebase}
-
-#   echo "($0) configuring avarice source"
-#   ../../source/${avaricebase}/configure -v --prefix=$prefix 
-#--with-gnu-ld --with-gnu-as --quiet --enable-install-libbfd --with-dwarf2
-#   cerror "avarice configuration failed"
-
-#   echo "($0) building avarice"
-#   make all 
-#   make install clean
-#   cerror "avarice build failed"
-#   touch ${base}/ok-build-${avaricebase}
-#   fi
-   
 
 #
 #
@@ -176,8 +147,8 @@ function buildandinstall()
    cd ../../build/${binutilsbase}
 
    echo "($0) configuring binutils source"
-   ../../source/${binutilsbase}/configure -v --target=${target} \
-      --prefix=$prefix --quiet --enable-install-libbfd --with-dwarf2 --disable-werror CFLAGS="-Wno-format-security "
+   ../../source/${binutilsbase}/configure -v ${commonconfig} \
+      --enable-install-libbfd --disable-werror CFLAGS="-Wno-format-security "
    cerror "binutils configuration failed"
 
 #  Hack to prevent docs to be build , it will fail if texinfo is v5.xx (as in Mint 17)
@@ -234,7 +205,7 @@ function buildandinstall()
    cp -rfp ${gmpbase}/* ${gccbase}/gmp
    cp -rfp ${mpfrbase}/* ${gccbase}/mpfr
    cp -rfp ${mpcbase}/* ${gccbase}/mpc
-#
+
    cd $prefix/source
    cd ${gccbase}
 #
@@ -275,8 +246,9 @@ function buildandinstall()
    cd ../../build/${gcccore}
 
    echo "($0) configuring GCC source"
-   ../../source/${gccbase}/configure -v --target=${target} --disable-nls \
-      --with-gnu-ld --with-gnu-as --prefix=$prefix --enable-languages="c,c++" --with-dwarf2 
+   ../../source/${gccbase}/configure -v ${commonconfig} \
+      --enable-languages="c,c++"
+#      --with-gnu-ld --with-gnu-as --prefix=$prefix --enable-languages="c,c++" --with-dwarf2 
    cerror "GCC configuration failed"
 
 #  Hack to prevent docs to be build , it will fail if texinfo is v5.xx (as in Mint 17)
