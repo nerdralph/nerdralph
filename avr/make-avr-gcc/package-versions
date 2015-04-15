@@ -1,9 +1,7 @@
 #
 #Define # of cores for make - more than 1 can cause concurrency problems
-# on MinGW, though this may be fixed with CFLAGS=-D__USE_MINGW_ACCESS
-# before configure
 #
-Cores=1
+Cores=4
 
 #
 #Define versions
