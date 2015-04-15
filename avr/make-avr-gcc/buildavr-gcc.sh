@@ -77,7 +77,7 @@ target=avr
 function buildandinstall()
 {
    # default configure flags
-   commonconfig=--target=$target --prefix=$prefix --quiet --with-dwarf2 --disable-nls
+   commonconfig="--target=$target --prefix=$prefix --quiet --with-dwarf2 --disable-nls"
 
    mkdir -p $prefix/source $prefix/build
 
