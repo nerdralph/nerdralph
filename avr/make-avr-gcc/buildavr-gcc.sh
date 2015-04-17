@@ -296,8 +296,10 @@ function buildandinstall()
 
 #   sh reconf
 #   sh doconf
-#   ./bootstrap
-#   cerror "libc source setup failed"
+
+# need to run bootstrap for non-release versions
+   ./bootstrap
+   cerror "libc source setup failed"
 
    mkdir -p ../../build/${avrlibcbase}
    cd ../../build/${avrlibcbase}

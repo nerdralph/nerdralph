@@ -46,10 +46,12 @@ wget -cq  http://ftp.gnu.org/gnu/binutils/${binutilstar} &
 
 #
 # Get avr-libc
-#
+# gcc5-compatible avr-libc not released yet so grab from svn trunk
 #
 #wget -cq  http://download.savannah.gnu.org/releases/avr-libc/avr-libc-user-manual-${avrlibcver}.pdf.bz2
-wget -cq  http://download.savannah.gnu.org/releases/avr-libc/${avrlibctar} &
+#wget -cq  http://download.savannah.gnu.org/releases/avr-libc/${avrlibctar} &
+svn co svn://svn.sv.gnu.org/avr-libc/trunk/avr-libc ${avrlibcbase}
+tar czf ${avrlibctar} ${avrlibcbase}
 
 # GCC Pre-requisites - see https://gcc.gnu.org/install/prerequisites.html
 
