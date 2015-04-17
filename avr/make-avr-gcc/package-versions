@@ -20,8 +20,9 @@ gdbtar=${gdbbase}.tar.gz
 #avrdudetar=${avrdudebase}.tar.gz
 #sourcefiles="${sourcefiles} ${avrdudetar}"
 
-#binutilsver=2.25 - build failed
 binutilsver=2.24
+# binutils 2.25 requires makeinfo or a patch to build without it
+binutilsver=2.25
 binutilsbase=binutils-${binutilsver}
 binutilstar=${binutilsbase}.tar.bz2
 sourcefiles="${sourcefiles} ${binutilstar}" 
@@ -42,7 +43,7 @@ mpcbase=mpc-${mpcver}
 mpctar=${mpcbase}.tar.gz
 sourcefiles="${sourcefiles} ${mpctar}"
 
-gccver=4.9.2
+gccver=5.1.0-RC-20150412
 gcccore=gcc-${gccver}
 gcccoretar=${gcccore}.tar.bz2
 gccbase=gcc-${gccver}
