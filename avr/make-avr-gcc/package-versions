@@ -43,7 +43,7 @@ mpcbase=mpc-${mpcver}
 mpctar=${mpcbase}.tar.gz
 sourcefiles="${sourcefiles} ${mpctar}"
 
-gccver=5.1.0-RC-20150412
+gccver=5.0.1-RC-20150418
 gcccore=gcc-${gccver}
 gcccoretar=${gcccore}.tar.bz2
 gccbase=gcc-${gccver}

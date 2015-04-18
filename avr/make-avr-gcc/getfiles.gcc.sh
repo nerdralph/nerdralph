@@ -78,7 +78,7 @@ wget -cq http://www.multiprecision.org/mpc/download/${mpctar} &
 #
 #wget -cq  ftp://ftp.dkuug.dk/pub/gnu/ftp/gnu/gcc/gcc-4.3.2/gcc-4.3.2.tar.bz2
 #wget -cq  http://ftp.gnu.org/gnu/gcc/${gcccore}/${gcccoretar}
-wget -cq  ftp://gcc.gnu.org/pub/gcc/snapshots/5.1.0-RC-20150412/${gcccoretar}
+wget -cq  ftp://gcc.gnu.org/pub/gcc/snapshots/${gccver}/${gcccoretar}
 
 #
 # Done
