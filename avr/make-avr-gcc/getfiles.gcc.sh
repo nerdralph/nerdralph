@@ -50,7 +50,7 @@ wget -cq  http://ftp.gnu.org/gnu/binutils/${binutilstar} &
 #
 #wget -cq  http://download.savannah.gnu.org/releases/avr-libc/avr-libc-user-manual-${avrlibcver}.pdf.bz2
 #wget -cq  http://download.savannah.gnu.org/releases/avr-libc/${avrlibctar} &
-svn co -r $avrlibcver svn://svn.sv.gnu.org/avr-libc/ ${avrlibcbase}
+svn co -r $avrlibcver svn://svn.sv.gnu.org/avr-libc/trunk/avr-libc/ ${avrlibcbase}
 tar czf ${avrlibctar} ${avrlibcbase}
 
 # GCC Pre-requisites - see https://gcc.gnu.org/install/prerequisites.html
