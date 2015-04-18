@@ -131,9 +131,9 @@ function buildandinstall()
 
    cd ${binutilsbase}
 
-#   echo "($0) patching binutils source"
+   echo "($0) patching binutils source"
+   sed -i -e 's,MAKEINFO="$MISSING makeinfo",MAKEINFO=true,g' configure
 
-#
 #for file in $patchdir/${binutilsbase}/*; do
 #    echo "Patching with $file"
 #    patch -p0 < $file
