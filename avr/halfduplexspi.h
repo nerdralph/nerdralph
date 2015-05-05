@@ -37,17 +37,13 @@ uint8_t spi_byte(uint8_t dataout){
     do{
         datain <<= 1;                     
         if(SPI_PIN & (1<<SPI_MOMI)) datain++;
-#ifdef TDDSPI
+
         sbi (SPI_DDR, SPI_MOMI);        // output mode
-#endif
-        //if ((dataout & 0x80) == 0) cbi (SPI_PORT, SPI_MOMI);
         if (dataout & 0x80) sbi (SPI_PORT, SPI_MOMI);
         SPI_PIN = (1<<SPI_SCK);
-#ifdef TDDSPI
         cbi (SPI_DDR, SPI_MOMI);        // input mode
-        //asm("nop");
-#endif
         SPI_PIN = (1<<SPI_SCK);         // toggle SCK
+
         cbi (SPI_PORT, SPI_MOMI);
         dataout <<= 1;                     
     
@@ -58,13 +54,14 @@ uint8_t spi_byte(uint8_t dataout){
 
 uint8_t spi_in(void){
 
-    uint8_t datain, bits = 8;
+    uint8_t pinstate, datain, bits = 8;
     
     do{
         datain <<= 1;                     
         SPI_PIN = (1<<SPI_SCK);
+        pinstate = SPI_PIN;
         SPI_PIN = (1<<SPI_SCK);         // toggle SCK
-        if(SPI_PIN & (1<<SPI_MOMI)) datain++;
+        if(pinstate & (1<<SPI_MOMI)) datain++;
     }while(--bits);
 
     return datain;
