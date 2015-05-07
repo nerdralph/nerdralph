@@ -50,7 +50,7 @@ gccbase=gcc-${gccver}
 sourcefiles="${sourcefiles} ${gcccoretar}"
 
 #avrlibcver=1.8.1
-avrlibcver=r2473
+avrlibcver=trunk
 avrlibcbase=avr-libc-${avrlibcver}
 #avrlibctar=${avrlibcbase}.tar.bz2
 avrlibctar=${avrlibcbase}.tar.gz
