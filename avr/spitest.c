@@ -18,6 +18,7 @@ void print2chars(uint16_t chars)
 void main()
 {
     uint8_t result, address;
+    spi_setup();
 loop:
     address = 0x0f;
 
