@@ -32,7 +32,6 @@ void spi_setup()
 
 uint8_t spi_byte(uint8_t dataout)
 {
-
     uint8_t datain, bits = 8;
     
     do{
@@ -55,7 +54,6 @@ uint8_t spi_byte(uint8_t dataout)
 
 uint8_t spi_in(void)
 {
-
     uint8_t pinstate, datain, bits = 8;
     
     do{
@@ -71,7 +69,6 @@ uint8_t spi_in(void)
 
 void spi_out(uint8_t dataout)
 {
-
     sbi (SPI_DDR, SPI_MOMI);        // output mode
     uint8_t bits = 8;
     
