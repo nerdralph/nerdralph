@@ -1,23 +1,24 @@
 /* AVR half-duplex software SPI master
  * @author: Ralph Doncaster 2015 public domain software
- * connect 330 Ohm resistor between slave MO and MI pins and
+ * connect 4.7K Ohm resistor between slave MO and MI pins and
  * connect slave MOSI to AVR MO/MI
  *  AVR              SLAVE
  *  SCK ------------ SCK
  *  MOMI --+-------- MOSI
  *         +-\/\/\-- MISO
- *            330
+ *            4.7K
  *
- * define TDDSPI before including this file to enable time-division
- * duplexing.  Otherwise set SPI_MOMI to input or output mode before
- * calling spi_byte.
+ * use spi_byte for tdd bi-directional spi transfer, or
+ * spi_in and spi_out for faster uni-directional transfer.
+ *
+ * define SPI_PORT and SPI_SCK before including this file
  */
 
 
 #define cbi(x,y)    x&= ~(1<<y)
 #define sbi(x,y)    x|= (1<<y)
 
-#ifndef SPI_PORT
+#ifndef SPI_MOMI
 #define SPI_MOMI (SPI_SCK - 1)    
 #endif
 
@@ -27,7 +28,6 @@
 void spi_setup()
 {
     sbi (SPI_DDR, SPI_SCK);             // output mode
-    //sbi (MCUCR, PUD);                   // disable pullup
 }
 
 uint8_t spi_byte(uint8_t dataout){
