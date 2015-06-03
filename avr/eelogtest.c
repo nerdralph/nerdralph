@@ -8,6 +8,5 @@ void main(void)
     do {
         eelog(*(ioreg + offset));
     } while ( offset-- );
-    eelog(42);
 }
 
