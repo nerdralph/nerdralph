@@ -1,0 +1,3 @@
+[submodule "avr/dmbs"]
+	path = avr/dmbs
+	url = https://github.com/nerdralph/dmbs.git
