@@ -1,16 +1,26 @@
-#include <stdio.h>
+/* bluetooth low energy beacon using nrf24l01 modules
+ * modeled after:
+ * http://dmitry.gr/index.php?r=05.Projects&proj=11.%20Bluetooth%20LE%20fakery
+ * https://github.com/floe/BTLE
+ */
+
+// #include <stdio.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
-// #define F_CPU	8000000
 #include <util/delay.h>
 
 #define cbi(x,y)    x&= ~(1<<y)
 #define sbi(x,y)    x|= (1<<y)
 
-#define PIN_CE	1 //Output
-#define PIN_nCS	2 //Output
-#define CLK PORTB
+#define DEBUG_PIN 0
+#define PIN_CE	1
+#define PIN_SCK	5
+#define PIN_MI (PIN_SCK - 1)	
+#define PIN_MO (PIN_MI - 1)	
+#define PIN_nCS	(PIN_MO - 1)	
+#define NRF_PORT PORTB
+#define NRF_DDR DDRB
 
 
 #define MY_MAC_0	0xEF
@@ -18,7 +28,7 @@
 #define MY_MAC_2	0xC0
 #define MY_MAC_3	0xAA
 #define MY_MAC_4	0x18
-#define MY_MAC_5	0x00
+#define MY_MAC_5	0x01
 
 
 void btLeCrc(const uint8_t* data, uint8_t len, uint8_t* dst){
@@ -106,46 +116,18 @@ void btLePacketEncode(uint8_t* packet, uint8_t len, uint8_t chan){
 	
 }
 
-#define XSTR(X) STR(X)
-#define STR(X) #X
-
-#define SPIPORT 0x05
-#define MOSIPIN 4
-#define CLKPIN 5
-#define mosipinmask (1<<MOSIPIN)
-#define clkpinmask (1<<CLKPIN)
-/*
-asm (
-".global spiByte\n"
-"spiByte:\n"
-"    in r18, " XSTR(SPIPORT) "     ; save port state\n"
-"    andi r18, ~(mosipinmask | clkpinmask)  \n"
-"    ldi r20, mosipinmask\n"
-"    ldi r19, clkpinmask\n"
-"    lsl r24\n"
-"    ori r24, 0x01       ; 9th bit marks end of byte\n"
-"spiBit:\n"
-"    out SPIPORT, r18\n"
-"    brcc zeroBit\n"
-"    out SPIPORT-2, r20  ; PORT address -2 is PIN\n"
-"    lsl r24\n"
-"    out SPIPORT-2, r19  ; clk hi\n"
-"    brne spiBit\n"
-"    ret\n"
-);
-*/
-
 uint8_t spi_byte(uint8_t byte){
 
 	uint8_t i = 8;
 	
 	do{
-		PORTB &=~ (uint8_t)(1 << 6);
-		if(byte & 0x80) PORTB |= (uint8_t)(1 << 6);
-		CLK |= (uint8_t)(1 << 4);
+		NRF_PORT &=~ (1 << PIN_MO);
+		if(byte & 0x80) NRF_PORT |= (1 << PIN_MO);
+		NRF_PORT |= (1 << PIN_SCK);
 		byte <<= 1;
-		if(PINA & (uint8_t)32) byte++;
-		CLK &=~ (uint8_t)(1 << 4);
+        // uncomment for full-duplex SPI
+		// if(NRF_PORT & PIN_MI) byte++;
+		NRF_PORT &= ~(1 << PIN_SCK);
 	
 	}while(--i);
 
@@ -154,83 +136,89 @@ uint8_t spi_byte(uint8_t byte){
 
 void nrf_cmd(uint8_t cmd, uint8_t data)
 {
-	cbi(PORTB, PIN_nCS);
+	cbi(NRF_PORT, PIN_nCS);
 	spi_byte(cmd);
 	spi_byte(data);
-	sbi(PORTB, PIN_nCS); //Deselect chip
+	sbi(NRF_PORT, PIN_nCS); //Deselect chip
 }
 
 // just call cmd(cmd, NOP) instead
 void nrf_simplebyte(uint8_t cmd)
 {
-	cbi(PORTB, PIN_nCS);
+	cbi(NRF_PORT, PIN_nCS);
 	spi_byte(cmd);
-	sbi(PORTB, PIN_nCS);
+	sbi(NRF_PORT, PIN_nCS);
 }
 
 void nrf_manybytes(uint8_t* data, uint8_t len){
 
-	cbi(PORTB, PIN_nCS);
+	cbi(NRF_PORT, PIN_nCS);
 	do{
 	
 		spi_byte(*data++);
 	
 	}while(--len);
-	sbi(PORTB, PIN_nCS);
+	sbi(NRF_PORT, PIN_nCS);
 }
 
-void fob_init (void)
+void SPI_init (void)
 {
-	DDRA = (uint8_t)~(1<<5);
-	DDRB = 0b00000110;
-	PORTA = 0b10001111;
-	cbi(PORTB, PIN_CE);
-	TCCR0B = (1<<CS00);
-	MCUCR = (1<<SM1)|(1<<SE);
-	sei();
+	sbi(NRF_PORT, PIN_nCS);
+    NRF_DDR = (1<<PIN_nCS) | (1<<PIN_CE) | (1<<PIN_SCK) | (1<<PIN_MO) \
+        | (1<<DEBUG_PIN);
+	//TCCR0B = (1<<CS00);
+	//MCUCR = (1<<SM1)|(1<<SE);
+	//sei();
 }
 
-int main (void)
+
+void main() __attribute__ ((noreturn));
+void main (void)
 {
 	static const uint8_t chRf[] = {2, 26,80};
 	static const uint8_t chLe[] = {37,38,39};
 	uint8_t i, L, ch = 0;
-	uint8_t buf[32];
+    // initialize buffer with set tx address command
+    // address 8E 89 BE D6 bit-reversed
+    // static rather than local saves 18 bytes
+	static uint8_t buf[32]; //= {0x30, 0x6B, 0x7D, 0x91, 0x71};
 	
-	fob_init();
-	
-	DDRA |= 4;
-	PORTA |= 4;
-	
+	SPI_init();
+
 	nrf_cmd(0x20, 0x12);	//on, no crc, int on RX/TX done
+	_delay_ms(2);           // Tpd2stby
 	//nrf_cmd(0x22, 0x00);	//no RX
 	nrf_cmd(0x21, 0x00);	//no auto-acknowledge
-	nrf_cmd(0x22, 0x01);	//RX on pipe 0
+	//nrf_cmd(0x22, 0x01);	//RX on pipe 0
 	nrf_cmd(0x23, 0x02);	//4-byte address
 	nrf_cmd(0x24, 0x00);	//no auto-retransmit
-	nrf_cmd(0x26, 0x06);	//1MBps at 0dBm
-	nrf_cmd(0x27, 0x3E);	//clear various flags
-	nrf_cmd(0x31, 32);	    //always RX 32 bytes
-	//nrf_cmd(0x3C, 0x00);	//no dynamic payloads -default
-	//nrf_cmd(0x3D, 0x00);	//no features - default
+	//nrf_cmd(0x26, 0x06);	//1MBps at 0dBm
+	nrf_cmd(0x26, 0x00);	//1MBps at -18dBm
+	//nrf_cmd(0x27, 0x3E);	//clear various flags
+	//nrf_cmd(0x31, 32);	    //always RX 32 bytes
 	
-	buf[0] = 0x30;			//set addresses
+	buf[0] = 0x30;			//set tx address
 	buf[1] = swapbits(0x8E);
 	buf[2] = swapbits(0x89);
 	buf[3] = swapbits(0xBE);
 	buf[4] = swapbits(0xD6);
 	nrf_manybytes(buf, 5);
-	buf[0] = 0x2A;
-	nrf_manybytes(buf, 5);
-
+	//buf[0] = 0x2A;        // rx address P0
+	//nrf_manybytes(buf, 5);
 	
 	
 	while(1){
-		
+		if(++ch == sizeof(chRf)){
+            ch = 0;
+            sbi(NRF_PORT, DEBUG_PIN);
+		    _delay_ms(109); // wait between advertisements
+            cbi(NRF_PORT, DEBUG_PIN);
+	    }
+
 		L = 0;
 		
-		buf[L++] = 0x40;	//PDU type, given address is random
-        buf[L++] = 11;      //17 bytes of payload
+		buf[L++] = 0x02;	//PDU type, given address is random
+        buf[L++] = 11;      //11 + 6 = 17 bytes of payload
 		
 		buf[L++] = MY_MAC_0;
 		buf[L++] = MY_MAC_1;
@@ -256,28 +244,27 @@ int main (void)
 		buf[L++] = 0x55;
 		buf[L++] = 0x55;
 		
-		
-		if(++ch == sizeof(chRf)) ch = 0;
+		btLePacketEncode(buf, L, chLe[ch]);
 		
 		nrf_cmd(0x25, chRf[ch]);
 		nrf_cmd(0x27, 0x6E);	//clear flags
 
-		btLePacketEncode(buf, L, chLe[ch]);
-		
-		nrf_simplebyte(0xE2); //Clear RX Fifo
-		nrf_simplebyte(0xE1); //Clear TX Fifo
+		//nrf_simplebyte(0xE2); //Clear RX Fifo
+		//nrf_simplebyte(0xE1); //Clear TX Fifo
 	
-		cbi(PORTB, PIN_nCS);
+		cbi(NRF_PORT, PIN_nCS);
 		spi_byte(0xA0);
 		for(i = 0 ; i < L ; i++) spi_byte(buf[i]);
-		sbi(PORTB, PIN_nCS);
+		sbi(NRF_PORT, PIN_nCS);
 	
-		nrf_cmd(0x20, 0x12);	//tx on
-		sbi(PORTB, PIN_CE);	 //do tx
-		_delay_ms(10);
-		cbi(PORTB, PIN_CE);	 //(in preparation of switching to RX quickly)
+		//nrf_cmd(0x20, 0x12);	//tx on
+        // no CE pulse required when CE tied high 
+		sbi(NRF_PORT, PIN_CE);	 //do tx
+		_delay_us(15);
+		cbi(NRF_PORT, PIN_CE);
+
+        // only delay for debugging - i.e. check IRQ trigger
+		//_delay_ms(1);           // let tx finish
 	}
 	
-	
-	return 0;
 }
