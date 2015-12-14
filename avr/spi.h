@@ -29,14 +29,15 @@ void spi_setup()
 void spi_byte(uint8_t byte)
 {
     uint8_t i = 8;
+    uint8_t portstate = SPIPORT;
 
     do{
-        SPI_PORT &= ~(1<<SPI_MOSI);     // clr mosi
         if (byte & 0x80) SPI_PIN = (1<<SPI_MOSI);
         SPI_PIN = (1<<SPI_SCK);         // clk hi
         byte <<= 1;
+        // read miso - comment out line for output only
         if (SPI_PIN & (1<<SPI_MISO)) byte++;
-        SPI_PIN = (1<<SPI_SCK);         // clk lo
+    	SPIPORT = portstate;      // clk and data low
     }while(--i);
 }
 
