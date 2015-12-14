@@ -26,11 +26,11 @@ void spi_byte(uint8_t byte){
     uint8_t i = 8;
     
     do{
-    	SPIPORT &= ~mosipinmask;
     	if(byte & 0x80) SPIPORT |= mosipinmask; 
     	SPIPORT |= clkpinmask;  // clk hi
     	byte <<= 1;
     	SPIPORT &=~ clkpinmask; // clk lo
+    	SPIPORT &= ~mosipinmask;
     }while(--i);
 
     return;
