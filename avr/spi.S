@@ -6,6 +6,7 @@
 #define __SFR_OFFSET 0
 #include <avr/io.h>
 
+#define tmpreg r0
 #define SPIPORT PORTB
 #define MOSI 4
 #define CLK 5
@@ -14,18 +15,18 @@
 
 .global spiByte
 spiByte:
-    in r18, SPIPORT     ; save port state
-    andi r18, ~(mosipinmask | clkpinmask)  
+    in tmpreg, SPIPORT     ; save port state
     ldi r20, mosipinmask
     ldi r19, clkpinmask
     lsl r24
     ori r24, 0x01       ; 9th bit marks end of byte
 spiBit:
-    out SPIPORT, r18
     brcc zeroBit
     out SPIPORT-2, r20  ; PORT address -2 is PIN
-    lsl r24
+zeroBit:
     out SPIPORT-2, r19  ; clk hi
+    lsl r24
+    out SPIPORT, tmpreg ; reset port state
     brne spiBit
     ret
 

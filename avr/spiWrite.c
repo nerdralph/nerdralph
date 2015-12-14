@@ -13,60 +13,56 @@ const uint8_t clkpinmask = (1<<CLK);
 
 void spiWrite(uint8_t data)
 {
- uint8_t bit;
- for(bit = 0x80; bit; bit >>= 1) {
-  SPIPORT &= ~clkpinmask;
-  if(data & bit) SPIPORT |= mosipinmask;
-  else SPIPORT &= ~mosipinmask;
-  SPIPORT |= clkpinmask;
- }
+    uint8_t bit;
+    for(bit = 0x80; bit; bit >>= 1) {
+        if(data & bit) SPIPORT |= mosipinmask;
+        else SPIPORT &= ~mosipinmask;
+        SPIPORT |= clkpinmask;
+        SPIPORT &= ~clkpinmask;
+    }
 }
 
-
 void spi_byte(uint8_t byte){
+    uint8_t i = 8;
+    
+    do{
+    	SPIPORT &= ~mosipinmask;
+    	if(byte & 0x80) SPIPORT |= mosipinmask; 
+    	SPIPORT |= clkpinmask;  // clk hi
+    	byte <<= 1;
+    	SPIPORT &=~ clkpinmask; // clk lo
+    }while(--i);
 
-	uint8_t i = 8;
-	
-	do{
-		SPIPORT &= ~mosipinmask;
-		if(byte & 0x80) SPIPORT |= mosipinmask; 
-		SPIPORT |= clkpinmask;  // clk hi
-		byte <<= 1;
-		SPIPORT &=~ clkpinmask; // clk lo
-	
-	}while(--i);
-
-	return;
+    return;
 }
 
 void spi_bytePIN(uint8_t byte){
 
-	uint8_t i = 8;
-	
-	do{
-		SPIPORT &= ~mosipinmask;
-		if(byte & 0x80) SPIPIN = mosipinmask; 
-		SPIPIN = clkpinmask;     // clk hi
-		byte <<= 1;
-		SPIPIN = clkpinmask;     // clk lo
-	
-	}while(--i);
+    uint8_t i = 8;
+    
+    do{
+    	if(byte & 0x80) SPIPIN = mosipinmask; 
+    	SPIPIN = clkpinmask;     // clk hi
+    	byte <<= 1;
+    	SPIPIN = clkpinmask;     // clk lo
+    	SPIPORT &= ~mosipinmask; // clear mosi
+    }while(--i);
 
-	return;
+    return;
 }
 
 void spi_byteFast(uint8_t byte){
 
-	uint8_t i = 8;
-	uint8_t portbits = (SPIPORT & ~(mosipinmask | clkpinmask) );
-	
-	do{
-		SPIPORT = portbits;      // clk and data low
-		if(byte & 0x80) SPIPIN = mosipinmask; 
-		SPIPIN = clkpinmask;     // toggle clk
-		byte <<= 1;
-	}while(--i);
+    uint8_t i = 8;
+    uint8_t portstate = SPIPORT;
+    
+    do{
+    	if(byte & 0x80) SPIPIN = mosipinmask; 
+    	SPIPIN = clkpinmask;     // clk hi
+    	byte <<= 1;
+    	SPIPORT = portstate;      // clk and data low
+    }while(--i);
 
-	return;
+    return;
 }
 
