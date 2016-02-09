@@ -41,11 +41,29 @@ spiIn:
     ldi r25, clkpinmask
 bitIn:
     out SPIPORT-2, r25  ; clk hi
-    sbis SPIPORT-2, MISO
+    sbic SPIPORT-2, MISO
     sec
     rol r24             ; shift in data
     out SPIPORT-2, r25  ; clk hi
     brcc bitIn
+    ret
+
+
+; receive-only SPI slave
+.global spiSIn
+spiSIn:
+    ldi r24, 0x01
+    clc
+bitSIn:
+    sbis SPIPORT-2, CLK
+    rjmp bitSIn         ; wait for clk hi
+    sbic SPIPORT-2, MOSI
+    sec
+    rol r24             ; shift in data
+waitClk:
+    sbis SPIPORT-2, CLK
+    rjmp waitClk         ; wait for clk lo
+    brcc bitSIn
     ret
 
 
