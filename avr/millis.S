@@ -6,6 +6,9 @@
 #define __SFR_OFFSET 0
 #include <avr/io.h>
 
+.section .bss
+.global __do_clear_bss
+
 ; 4 byte (long) global variable in RAM
 .lcomm wdt_interrupt_counter, 4
 .global wdt_interrupt_counter
