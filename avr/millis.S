@@ -1,4 +1,4 @@
-/* Ralph Doncaster 2014 public domain software
+/* Ralph Doncaster 2018 public domain software
  * timer ISR counter
  */
 
