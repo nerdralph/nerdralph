@@ -23,20 +23,20 @@ WDT_vect:
     push ZL
     in ZL, SREG
     push ZL                             ; save SREG
-    push ZH
     push tmp1
     ldi ZL, lo8(wdt_interrupt_counter)  ; must be 8-byte aligned
-    sub ZH, ZH                          ; also clears carry
+    ld tmp1, Z
+    sbci tmp1, -19
+    rjmp save
 add:
     ld tmp1, Z
-    sbci tmp1, -16
+    sbci tmp1, -1
+save:
     st Z+, tmp1
-    andi ZL, 0x04
-    breq add
+    cpi ZL, 0x04
+    brne add
     pop tmp1
-    pop ZH
     pop ZL
     out SREG, ZL
     pop ZL
     reti
-
