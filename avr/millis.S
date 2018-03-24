@@ -33,8 +33,7 @@ add:
     sbci tmp1, -1
 save:
     st Z+, tmp1
-    cpi ZL, lo8(wdt_interrupt_counter+4) 
-    brne add
+    brcc add
     pop tmp1
     pop ZL
     out SREG, ZL
