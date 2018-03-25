@@ -9,8 +9,8 @@
 .section .bss
 .global __do_clear_bss
 
-; 4 byte (long) global variable in RAM
-.lcomm wdt_interrupt_counter, 4
+; 4 byte (long) global variable in RAM + overflow byte
+.lcomm wdt_interrupt_counter, 5
 .global wdt_interrupt_counter
 
 .section .text
