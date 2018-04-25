@@ -64,7 +64,7 @@ for speed in speeds:
         if(debug):print("rough guess:", int(baud_guess(speed, avg)))
         # try slower speeds until a different bit pattern is read
         while True:
-            speed *= .99
+            speed *= .985
             if not try_speed(device, speed) >= avg-0.5 : break
         break
 
