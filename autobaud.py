@@ -30,17 +30,18 @@ def send_break(ser):
     ser.break_condition = 0
 
 def try_speed(device, speed):
+    if(debug):print("Reading at", int(speed), "bps.")
     avg = 0
     ser=serial.Serial(port=device, baudrate=speed)
     #ser.send_break(0.01)
     send_break(ser)
-    ser.read()                          # read break
+    ser.read(1)                         # skip break
     bytes = ser.read(5)                 # 5 zeros in 0x55
     if(debug):print("Rx:",  bytes)
     if (bytes[0] == 0):
         if(debug):print("Target baud <", int(speed/9))
     else:
-        if(debug):("Target baud >", int(speed/9))
+        if(debug):print("Target baud >", int(speed/8))
         width = 0
         for byte in bytes:
             width += bit_width(byte)
@@ -50,8 +51,6 @@ def try_speed(device, speed):
     return avg
 
 
-#logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%I:%M:%S', level=logging.DEBUG)
-#speeds = [921600, 460800, 230400]
 speeds = [1350000, 900000, 600000, 400000]
 
 if (len(sys.argv) == 1):
@@ -62,22 +61,23 @@ else:
 for speed in speeds:
     avg = try_speed(device, speed)
     if (avg != 0):
-        if(debug):print("1st guess:", int(baud_guess(speed, avg)))
-        # try 1/3 bit-time slower
-        speed2 = (avg-0.33)/avg * speed
-        avg2 = try_speed(device, speed2)
-        avg = (avg + avg2)/2
-        speed = (speed + speed2)/2
+        if(debug):print("rough guess:", int(baud_guess(speed, avg)))
+        # try slower speeds until a different bit pattern is read
+        while True:
+            speed *= .99
+            if not try_speed(device, speed) >= avg-0.5 : break
         break
 
-final = int(baud_guess(speed, avg))
+# adjust for 0.5 bit-time
+final = int(baud_guess(speed, avg-0.5))
 #verify speed
 ser=serial.Serial(port=device, baudrate=final*5)
 send_break(ser)
-bytes = ser.read(6)
-# should read break + 5x 0xF0
+ser.read(1)                         # skip break
+bytes = ser.read(5)
+# should read 5x 0xF0
 if(debug):print("Rx:",  bytes)
-if(bytes[1] != 0xF0):
+if(bytes[0] != 0xF0):
     print("failed to verify baud rate")
 
 print("Final:", final)
