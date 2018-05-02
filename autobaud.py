@@ -32,12 +32,13 @@ def send_break(ser):
 def try_speed(device, speed):
     if(debug):print("Reading at", int(speed), "bps.")
     avg = 0
-    ser=serial.Serial(port=device, baudrate=speed)
+    ser=serial.Serial(port=device, baudrate=speed, timeout=2)
     #ser.send_break(0.01)
     send_break(ser)
     ser.read(1)                         # skip break
     bytes = ser.read(5)                 # 5 zeros in 0x55
     if(debug):print("Rx:",  bytes)
+    if (len(bytes) == 0): return 0
     if (bytes[0] == 0):
         if(debug):print("Target baud <", int(speed/9))
     else:
@@ -67,17 +68,26 @@ for speed in speeds:
             speed *= .985
             if not try_speed(device, speed) >= avg-0.5 : break
         break
+    else:
+        if speed == speeds[len(speeds)-1]:
+            print("0")
+            # tried all speeds; no target found
+            sys.exit(1)
 
-# adjust for 0.5 bit-time
-final = int(baud_guess(speed, avg-0.5))
+# adjust for slightly more than 0.5 bit-time
+final = int(baud_guess(speed, avg-0.555))
 #verify speed
-ser=serial.Serial(port=device, baudrate=final*5)
+ser=serial.Serial(port=device, baudrate=final*5, timeout=2)
 send_break(ser)
 ser.read(1)                         # skip break
 bytes = ser.read(5)
+ser.close
 # should read 5x 0xF0
 if(debug):print("Rx:",  bytes)
 if(bytes[0] != 0xF0):
     print("failed to verify baud rate")
 
-print("Final:", final)
+ser=serial.Serial(port=device, baudrate=final)
+ser.write(b'\x30')                  # exit dW & run
+ser.close
+print(final)
