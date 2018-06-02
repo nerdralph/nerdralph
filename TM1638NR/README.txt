@@ -1,6 +1,6 @@
 # TM1637NR
 
-A minimal Arduino-compatible library for TM1637-based "LED&KEY" modules.
+A minimal Arduino-compatible library for TM1638 "LED&KEY" modules.
 Supports 8 buttons, 8 LEDs, and an 8-digit 7-segment display.
 
 To use, copy to your Arduino libraries directory, include TM1638NR.h in
