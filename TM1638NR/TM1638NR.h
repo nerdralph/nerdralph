@@ -6,7 +6,6 @@
 #ifndef TM1638NR_h
 #define TM1638NR_h
 
-
 class TM1638NR {
  public:
   // brightness levels 0-7
@@ -14,7 +13,7 @@ class TM1638NR {
 
   static void sendCommand(uint8_t cmd) {
     startTx(cmd);
-    pinMode(STROBE_IO, INPUT);
+    pinMode(STROBE, INPUT);
   }
 
   // 8 buttons from K3 supported
@@ -31,18 +30,19 @@ class TM1638NR {
 
  private:
   static void startTx(uint8_t value) {
-    pinMode(STROBE_IO, OUTPUT);
-    shiftOut(DATA_IO, CLOCK_IO, LSBFIRST, value);
+    pinMode(STROBE, OUTPUT);
+    shiftOut(DATA, CLOCK, LSBFIRST, value);
   }
+
   static void writeLoc(uint8_t position, uint8_t value) {
     startTx(0xC0 + position);
     startTx(value);
-    pinMode(STROBE_IO, INPUT);
+    pinMode(STROBE, INPUT);
   }
 
-  static const byte DATA_IO = 3;
-  static const byte CLOCK_IO = 1;
-  static const byte STROBE_IO = 0;
+  static const byte STROBE;
+  static const byte CLOCK;
+  static const byte DATA;
 
   enum COMMAND {
     ACTIVATE = 0x8A,
@@ -52,8 +52,8 @@ class TM1638NR {
 };
 
 inline void TM1638NR::reset(byte brightness) {
-  pinMode(CLOCK_IO, OUTPUT);
-  pinMode(DATA_IO, OUTPUT);
+  pinMode(CLOCK, OUTPUT);
+  pinMode(DATA, OUTPUT);
   sendCommand(ACTIVATE | (brightness & 0x07));
   for (uint8_t i = 16; i--; writeLoc(i, 0x00));
 }
@@ -61,15 +61,15 @@ inline void TM1638NR::reset(byte brightness) {
 inline uint8_t TM1638NR::readButtons() {
   uint8_t buttons = 0;
   startTx(BUTTONS);
-  pinMode(DATA_IO, INPUT);
+  pinMode(DATA, INPUT);
 
   for (uint8_t i = 0; i < 4; i++) {
-    uint8_t bits = shiftIn(DATA_IO, CLOCK_IO, LSBFIRST) << i;
+    uint8_t bits = shiftIn(DATA, CLOCK, LSBFIRST) << i;
     buttons |= bits;
   }
 
-  pinMode(DATA_IO, OUTPUT);
-  pinMode(STROBE_IO, INPUT);
+  pinMode(DATA, OUTPUT);
+  pinMode(STROBE, INPUT);
   return buttons;
 }
 
