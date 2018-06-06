@@ -1,3 +1,7 @@
+// shift1 (c) 2018 Ralph Doncaster, MIT licence
+// use with a ~33K resistor and diode from SRCLK to SER
+// see http://nerdralph.blogspot.com/2018/06/fast-1-wire-shift-register-control.html
+
 const uint8_t SHFT = 0;
 
 void shiftOne(uint8_t pin, uint8_t value) {
