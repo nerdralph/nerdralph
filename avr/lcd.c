@@ -156,7 +156,7 @@ inline void lcd_init() {
 
 
     // entry mode increment, don't shift
-    lcd_command(LCD_ENTRY_MODE|LCD_INC);
+    // lcd_command(LCD_ENTRY_MODE|LCD_INC);
 
     lcd_clear();
 
