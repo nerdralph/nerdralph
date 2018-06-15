@@ -135,30 +135,6 @@ void lcd_init() {
         lcd_write(init_seq[i]);
     }
 
-/*
-    lcd_write_nibble(LCD_FUNC|LCD_8BIT);
-    //lcd_long_delay();
-    lcd_delay();
-    lcd_write_nibble(LCD_FUNC|LCD_8BIT);
-    lcd_delay();
-    lcd_write_nibble(LCD_FUNC|LCD_8BIT);
-    lcd_delay();
-
-    // set 4-bit mode
-    lcd_write_nibble(LCD_FUNC);
-    lcd_delay();
-
-    // 2 lines, normal font, 4 bit
-    lcd_command(LCD_FUNC|LCD_2LINES);
-
-
-    // entry mode increment, don't shift is default state
-    // lcd_command(LCD_ENTRY_MODE|LCD_INC);
-
-    // display on, no cursor
-    lcd_cursor_off();
-*/
-
     lcd_clear();
 }
 
