@@ -1,8 +1,9 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 # 2018 Ralph Doncaster MIT license software
 # AVR debugwire autobaud - sends break and expects 0x55 response
 # one optional argument: serial port name i.e. /dev/ttyUSB0
-# uses pyserial library
+#  uses first serial port found if none specified
+# uses pyserial library, tested only on python3
 
 import logging
 import serial
@@ -81,7 +82,7 @@ ser=serial.Serial(port=device, baudrate=final*5, timeout=2)
 send_break(ser)
 ser.read(1)                         # skip break
 bytes = ser.read(5)
-ser.close
+ser.close()
 # should read 5x 0xF0
 if(debug):print("Rx:",  bytes)
 if(bytes[0] != 0xF0):
@@ -89,5 +90,5 @@ if(bytes[0] != 0xF0):
 
 ser=serial.Serial(port=device, baudrate=final)
 ser.write(b'\x30')                  # exit dW & run
-ser.close
+ser.close()
 print(final)
