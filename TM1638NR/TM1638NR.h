@@ -9,7 +9,10 @@
 class TM1638NR {
  public:
   // brightness levels 0-7
-  static void reset(byte brightness = 3);
+  static void reset(byte brightness = 2){
+    sendCommand(ACTIVATE | (brightness & 0x07));
+    for (uint8_t i = 16; i--; writeLoc(i, 0x00));
+  }
 
   static void sendCommand(uint8_t cmd) {
     startTx(cmd);
@@ -19,7 +22,14 @@ class TM1638NR {
   // 8 buttons from K3 supported
   static uint8_t readButtons();
 
-  static void setLEDs(uint8_t mask);
+  // bit 0 = LED 0 ... 
+  static void setLEDs(uint8_t mask) {
+    for ( uint8_t bit = 0; bit < 8; bit++) {
+      // LEDs are at odd locations
+      writeLoc(1 + (bit<<1), mask & 1);
+      mask >>= 1;
+    }
+  }
 
   // write to seven segments
   static void displaySS(uint8_t position, uint8_t value) {
@@ -29,9 +39,49 @@ class TM1638NR {
   static void displayHex(uint8_t position, uint8_t hex);
 
  private:
+  static void clkLow()  __attribute__((always_inline)) {
+    // ensure clock has risen to high
+    while (digitalRead(CLOCK) == 0);
+    pinMode(CLOCK, OUTPUT);
+  }
+
+  // open-drain output, data clocked on rising edge, LSB first
+  // 1Mhz max
+  static void send(uint8_t value) {
+    uint8_t bits = 8;
+    do {
+      clkLow();
+      if (value & 0x01)
+        pinMode(DATA, INPUT);
+      else
+        pinMode(DATA, OUTPUT);
+      value >>= 1;
+      pinMode(CLOCK, INPUT);
+      //delayMicroseconds(1);
+    }
+    while (--bits);
+    pinMode(DATA, INPUT);       // release data line
+  }
+
+  // data clocked from slave on falling edge, LSB first
+  // 1Mhz max
+  static uint8_t receive() {
+    uint8_t bits = 8;
+    uint8_t value = 0;
+    do {
+      clkLow();
+      value >>= 1;
+      // delayMicroseconds(1);
+      pinMode(CLOCK, INPUT);
+      if (digitalRead(DATA)) value |= 0x80;
+    }
+    while (--bits);
+    return value;
+  }
+
   static void startTx(uint8_t value) {
     pinMode(STROBE, OUTPUT);
-    shiftOut(DATA, CLOCK, LSBFIRST, value);
+    send(value);
   }
 
   static void writeLoc(uint8_t position, uint8_t value) {
@@ -45,41 +95,25 @@ class TM1638NR {
   static const byte DATA;
 
   enum COMMAND {
-    ACTIVATE = 0x8A,
+    ACTIVATE = 0x88,
     BUTTONS = 0x42,
     WRITE_LOC = 0x44
   };
-};
 
-inline void TM1638NR::reset(byte brightness) {
-  pinMode(CLOCK, OUTPUT);
-  pinMode(DATA, OUTPUT);
-  sendCommand(ACTIVATE | (brightness & 0x07));
-  for (uint8_t i = 16; i--; writeLoc(i, 0x00));
-}
+};
 
 inline uint8_t TM1638NR::readButtons() {
   uint8_t buttons = 0;
   startTx(BUTTONS);
-  pinMode(DATA, INPUT);
+  delayMicroseconds(1);           // tWAIT
 
   for (uint8_t i = 0; i < 4; i++) {
-    uint8_t bits = shiftIn(DATA, CLOCK, LSBFIRST) << i;
+    uint8_t bits = receive() << i;
     buttons |= bits;
   }
 
-  pinMode(DATA, OUTPUT);
   pinMode(STROBE, INPUT);
   return buttons;
-}
-
-// bit 0 = LED 0 ... 
-inline void TM1638NR::setLEDs(uint8_t mask) {
-  for ( uint8_t bit = 0; bit < 8; bit++){
-    // LEDs are at odd locations
-    writeLoc(1 + (bit<<1), mask & 1);
-    mask >>= 1;
-  }
 }
 
 /*
@@ -91,7 +125,7 @@ segments:
   -3- .7
 */
 
-const uint8_t hexss[] PROGMEM = {
+static const int8_t HEXSS[] PROGMEM = {
   0x3F, /* 0 */
   0x06, /* 1 */
   0x5B, /* 2 */
@@ -110,8 +144,8 @@ const uint8_t hexss[] PROGMEM = {
   0x71, /* F */
 };
 
-inline void TM1638NR::displayHex(uint8_t position, uint8_t hex) {
-  displaySS(position, pgm_read_byte(hexss + (hex & 0x0F)));
+void TM1638NR::displayHex(uint8_t position, uint8_t hex) {
+  displaySS(position, pgm_read_byte(HEXSS + (hex & 0x0F)));
 }
 
 #endif
