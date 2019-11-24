@@ -1,10 +1,12 @@
 #DEVICE = attiny85
 #DEVICE = attiny84
 #DEVICE = attiny88
-DEVICE = atmega328p
-CPU_SPEED = 16000000L
-#CPU_SPEED = 8000000
-#DEVICE = atmega8
+#DEVICE = atmega8a
+#DEVICE = atmega328p
+DEVICE ?= attiny13
+CPU_SPEED = 9500000
+#CPU_SPEED = 1150000
+CPU_SPEED ?= 8000000
 # or export DEVICE=atxxxx in shell 
 # export TARGET=app
 
@@ -13,11 +15,11 @@ SERIAL_BAUD = 115200
 SERIAL_BIT_TIME = $(CPU_SPEED)/$(SERIAL_BAUD)
 
 PROGRAMMER = usbasp -B 4
-PROGRAMMER = usbasp
+#PROGRAMMER = usbasp
 #PROGRAMMER = arduino -P com16
 
 # CC = avr-g++ --std=c++11 -mmcu=$(DEVICE) -DF_CPU=8000000
-#CPP = avr-g++ --std=c++11 -mmcu=$(DEVICE)
+CPP = avr-g++ --std=c++11 -mmcu=$(DEVICE)
 #CC = avr-gcc -mmcu=$(DEVICE) -DF_CPU=$(CPU_SPEED) -DBIT_TIME=$(SERIAL_BIT_TIME)
 CC = avr-gcc -mmcu=$(DEVICE) -DF_CPU=$(CPU_SPEED)
 LDLIBS = libs/libs.a
@@ -25,8 +27,12 @@ LDLIBS = libs/libs.a
 CFLAGS += -ffunction-sections -Wl,--gc-sections
 CFLAGS += -Os -Wall -mrelax
 CFLAGS += -flto
+#CFLAGS += -nodefaultlibs
+#CFLAGS += -Wl,--defsym,exit=0
+CFLAGS += -Ilibs/
 #LDFLAGS +=
 CFLAGS += -Wno-main
+CFLAGS += -ffreestanding    # int main() not required
 CFLAGS += --std=gnu99
 
 LIB_CSRC = $(shell ls libs/*/*.c)
@@ -51,18 +57,25 @@ libs/libs.a: $(LIBOBJ)
 sniff: sniff.o sniffASM.o
 	$(CC) $^ -o $@
 
-#$(TARGET).hex: $(TARGET)
-#	avr-objcopy -j .text -j .data -O ihex $< $@
+$(TARGET).hex: $(TARGET)
+	avr-objcopy -j .text -j .data -O ihex $< $@
 
 %.hex: %
 	avr-objcopy -j .text -j .data -O ihex $< $@
 
 flash:  $(TARGET).hex
-	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER) -U flash:w:$(TARGET).hex
+	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER) -U flash:w:$(TARGET).hex -F
+
+eedump:
+	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER) -U eeprom:r:eedump.hex:i
 
 # lfuse 0xe2 = 8Mhz internal RC, ckdiv1, 64ms SUT
 fuses:
 	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER) -U lfuse:w:0xe2:m
+
+# DWEN = bit 3
+t13dwen:
+	avrdude -C /etc/avrdude.conf -p t13 -c $(PROGRAMMER) -U hfuse:w:0xf7:m
 
 clean:
 	rm -f $(LDLIBS) $(TARGET) $(TARGET).hex *.o
