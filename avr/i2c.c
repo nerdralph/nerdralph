@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <avr/io.h>
 #include <util/delay.h>
-#include "eelog.h"
 
 #define I2C_PORT PORTB 
 #define I2C_DDR DDRB
@@ -14,18 +13,23 @@
 
 const int SUCCESS = 0;
 const int ADDR_NAK = 2;
+const int BUS_INUSE = 5;
 
 // PORT pin numbers for SDA & SCL (0-7)
 const int I2C_SCL = 3;  //physical pin 2
 const int I2C_SDA = 4;  //physical pin 3
 
-static void i2c_start()
+static uint8_t i2c_start()
 {
+    // SDA should be high if bus is free
+    if ((I2C_PIN & (1<<I2C_SDA)) == 0)
+        return BUS_INUSE;
     // set I2C_SDA to output mode for low 
     I2C_DDR |= (1<<I2C_SDA);
     asm ("lpm" ::: "r0");       // 3 cycle delay
     // set I2C_SCL to output mode for low 
     I2C_DDR |= (1<<I2C_SCL);
+    return 0;
 }
 
 __attribute__((always_inline))\
@@ -71,34 +75,10 @@ uint8_t i2c_write(uint8_t data)
     return err;
 }
 
-// start must be called first
-uint8_t i2c_write_old(uint8_t data)
-{
-    uint8_t i = 8;
-    do{
-        // set I2C_SDA to input mode for high
-        if (data & 0x80) I2C_DDR &= ~(1<<I2C_SDA);
-        scl_hi();
-        data <<= 1;
-        I2C_DDR |= (1<<I2C_SCL);    // SCL low
-        I2C_DDR |= (1<<I2C_SDA);    // SDA low
-    } while (--i);
-
-    // release I2C_SDA
-    I2C_DDR &= ~(1<<I2C_SDA);
-    scl_hi();
-    // check for ACK
-    int err = SUCCESS;
-    // NACK = SDA high
-    if (I2C_PIN & (1<<I2C_SDA)) err = ADDR_NAK;
-    I2C_DDR |= (1<<I2C_SCL);        // SCL low
-    I2C_DDR |= (1<<I2C_SDA);        // SDA low
-    return err;
-}
-
 uint8_t i2c_start_write(uint8_t addr)
 {
-    i2c_start();
+    uint8_t err = i2c_start();
+    if (err) return err;
     return i2c_write(addr<<1);      // address goes in upper 7 bits
 }
 
@@ -106,6 +86,12 @@ uint8_t i2c_start_read(uint8_t addr)
 {
     i2c_start();
     return i2c_write(addr<<1 | 1);  // address goes in upper 7 bits
+}
+
+uint8_t i2c_restart_read(uint8_t addr)
+{
+    scl_hi();
+    return i2c_start_read(addr);
 }
 
 void i2c_stop()
@@ -166,8 +152,11 @@ uint8_t i2c_read_nack()
     return i2c_read(0);
 }
 
+/*
+#include "eelog.h"
 // weak main for testing
 __attribute__ ((weak))\
+__attribute__ ((OS_main))\
 void main()
 {
     // scan bus
@@ -188,3 +177,4 @@ void main()
         _delay_ms(200);
     }
 }
+*/
