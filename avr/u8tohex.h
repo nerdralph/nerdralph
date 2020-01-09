@@ -5,7 +5,7 @@
 // converts 4-bit nibble to ascii hex
 uint8_t nibbletohex(uint8_t value) 
 {
-    if ( value > 9 ) value += 'A' - '0';
+    if ( value > 9 ) value += 'A' - ':';
     return value + '0';
 }
 
