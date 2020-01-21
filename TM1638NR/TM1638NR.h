@@ -1,6 +1,8 @@
 /* Ralph Doncaster 2018
  * TM1638NR.h - Library for addressing TM1638 I/O chips/card from Arduino.
  * MIT license.
+ * 2018-06-03 v1.0
+ * 2018-06-21 v1.1 improve clocking to match datasheet
  */
 
 #ifndef TM1638NR_h
@@ -57,7 +59,6 @@ class TM1638NR {
         pinMode(DATA, OUTPUT);
       value >>= 1;
       pinMode(CLOCK, INPUT);
-      //delayMicroseconds(1);
     }
     while (--bits);
     pinMode(DATA, INPUT);       // release data line
@@ -71,7 +72,6 @@ class TM1638NR {
     do {
       clkLow();
       value >>= 1;
-      // delayMicroseconds(1);
       pinMode(CLOCK, INPUT);
       if (digitalRead(DATA)) value |= 0x80;
     }
