@@ -8,7 +8,7 @@
  *
  * define BAUD_RATE before including BBUart.h to change default baud rate 
  *
- * capable of single-pin operation (UART_Tx = UART_Rx)
+ * capable of single-pin operation (PU_TX = PU_RX)
  * 
  * 20200123 version 0.5
  */
@@ -45,15 +45,18 @@
 __attribute((naked))
 void pu_tx(char c)
 {
-    register char ddr_save asm("r0");
-    char bitcnt;
-    // start + 8bit + stop = 10 bits
-    asm volatile ("ldi %0, 10" : "=d"(bitcnt) );
-    asm volatile ("cli");
-    ddr(PU_TX) |= (1<<bit(PU_TX));      // start bit 
-    ddr_save = ddr(PU_TX);
-    asm volatile("com %0" : "+r"(c));   // invert for open drain
-    asm volatile("Ltxbit:");
+    char bitcnt = 10;                   // start + 8bit + stop = 10 bits
+    asm volatile (
+    "cli\n"
+    "sbi %[tx_ddr], %[tx_pin]\n"        // start bit 
+    "in r0, %[tx_ddr]\n"                // save DDR in r0
+    "com %[c]\n"                        // invert for open drain
+    "Ltxbit:\n"
+    : [c] "+r" (c)
+    : [tx_ddr] "I" (_SFR_IO_ADDR(ddr(PU_TX))),
+      [tx_pin] "I" (bit(PU_TX)),
+      "r" (bitcnt)                      // force bitcnt init
+    );
     __builtin_avr_delay_cycles(PUTXWAIT);
     // 7 cycle loop
     asm volatile (
@@ -67,8 +70,7 @@ void pu_tx(char c)
     : [c] "+r" (c),
       [bitcnt] "+r" (bitcnt)
     : [tx_ddr] "I" (_SFR_IO_ADDR(ddr(PU_TX))),
-      [tx_pin] "I" (bit(PU_TX)),
-      "r" (ddr_save)
+      [tx_pin] "I" (bit(PU_TX))
     );
 }
 
