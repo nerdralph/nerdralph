@@ -45,7 +45,7 @@
 __attribute((naked))
 void pu_tx(char c)
 {
-    char bitcnt = 10;                   // start + 8bit + stop = 10 bits
+    volatile char bitcnt = 10;          // start + 8bit + stop = 10 bits
     asm volatile (
     "cli\n"
     "sbi %[tx_ddr], %[tx_pin]\n"        // start bit 
