@@ -21,15 +21,16 @@
 #define BAUD_RATE 115200L               // default baud rate
 #endif
 
-#define BIT_CYCLES (F_CPU/BAUD_RATE) 
+#define BIT_CYCLES (F_CPU/(BAUD_RATE*1.0)) 
 // delay based on cycle count of asm code + 0.5 for frounding
 #define PUTXWAIT  (BIT_CYCLES - 7 + 0.5)
-// could correct for RXDELAYCOUNT error in RXSTARTCOUNT calculation
-#define PURXSTART ((BIT_CYCLES * 1.5) - 13 + 0.5)
-#define PURXWAIT  ((BIT_CYCLES - 13 + 0.5)
+#define PURXWAIT  (BIT_CYCLES - 5 + 0.5)
+// correct for PURXWAIT skew in PURXSTART calculation
+// skew is half of 7 delay intervals between 8 bits
+#define PUSKEW ((PURXWAIT - (int)(PURXWAIT + 0.5)) * 3.5 + 0.5)
+#define PURXSTART ((BIT_CYCLES)/2 - 2.5 - PUSKEW)
 
 // I/O register macros
-
 #define BIT(r,b)    (b)
 #define PORT(r,b)   (PORT ## r)
 #define DDR(r,b)    (DDR ## r)
@@ -74,28 +75,40 @@ void pu_tx(char c)
     );
 }
 
-/*
-; receive byte into r24
-.global RxByte
-RxByte:
-    sbic UART_Port-2, UART_Rx           ; wait for start edge
-    rjmp RxByte
-    ldi r24, 0x80                       ; bit shift counter
-    ldi delayArg, RXSTART               ; 1.5 bit delay
-RxBit:
-    ; 7 cycle loop + delay = 7 + 6 + 3*DelayArg
-    rcall Delay3Cycle                   ; delay and clear carry
-    ldi delayArg, RXDELAY 
-    lsr r24
-    sbic UART_Port-2, UART_Rx
-    ori r24, 0x80
-    nop                                 ; match 7-cycle Tx loop
-    brcc RxBit
-    ; fall into delay for stop bit
 
-; delay (3 cycle * delayArg) -1 + 4 cycles (ret instruction)
-Delay3Cycle:
-    dec delayArg
-    brne Delay3Cycle
-    ret
-*/
+__attribute((naked))
+char pu_rx()
+{
+    char c;
+    asm volatile (
+    // wait for idle state (high)
+    "1: sbis %[rx_pin], %[rx_bit]\n"
+    "rjmp 1b\n"
+    "ldi %[c], 0x80\n"                  // bit shift counter
+    "cli\n"
+    // wait for start bit (low)
+    "1: sbic %[rx_pin], %[rx_bit]\n"
+    "rjmp 1b\n"
+    //"sbi %[rx_pin], 3\n"                // debug
+    : [c] "=d" (c)
+    : [rx_pin] "I" (_SFR_IO_ADDR(pin(PU_RX))),
+      [rx_bit] "I" (bit(PU_RX))
+    );
+    __builtin_avr_delay_cycles(PURXSTART);
+    asm volatile ("Lrxbit:");
+    __builtin_avr_delay_cycles(PURXWAIT);
+    // 5 cycle loop 
+    asm volatile (
+    "lsr %[c]\n" 
+    "sbic %[rx_pin], %[rx_bit]\n"
+    "ori %[c], 0x80\n"
+    //"sbi %[rx_pin], 3\n"                // debug
+    "brcc Lrxbit\n"
+    "reti\n"
+    : [c] "+d" (c)
+    : [rx_pin] "I" (_SFR_IO_ADDR(pin(PU_RX))),
+      [rx_bit] "I" (bit(PU_RX))
+    );
+    return c;
+}
+
