@@ -21,14 +21,25 @@
 #define BAUD_RATE 115200L               // default baud rate
 #endif
 
-#define BIT_CYCLES (F_CPU/(BAUD_RATE*1.0)) 
-// delay based on cycle count of asm code + 0.5 for frounding
-#define PUTXWAIT  (BIT_CYCLES - 7 + 0.5)
-#define PURXWAIT  (BIT_CYCLES - 5 + 0.5)
+// use static inline functions for type safety
+extern inline float BIT_CYCLES() {return F_CPU/(BAUD_RATE*1.0);}
+
+// delay based on cycle count of asm code + 0.5 for rounding
+extern inline int PUTXWAIT() {return BIT_CYCLES() - 7 + 0.5;}
+extern inline int PURXWAIT() {return BIT_CYCLES() - 5 + 0.5;}
+
 // correct for PURXWAIT skew in PURXSTART calculation
 // skew is half of 7 delay intervals between 8 bits
-#define PUSKEW ((PURXWAIT - (int)(PURXWAIT + 0.5)) * 3.5 + 0.5)
-#define PURXSTART ((BIT_CYCLES)/2 - 2.5 - PUSKEW)
+extern inline float PUSKEW() {
+    return (BIT_CYCLES() - (int)(BIT_CYCLES() + 0.5)) * 3.5;
+}
+// Time from falling edge of start bit to sample 1st bit is 1.5 *
+// bit-time. Subtract 2 cycles for sbic, 1 for lsr, and PURXWAIT.
+// Subtract 1.5 cycles because start bit detection is accurate to
+// +-1.5 cycles.  Add 0.5 cycles for int rounding, and add skew.
+extern inline int PURXSTART() {
+    return (BIT_CYCLES()*1.5 -3 -PURXWAIT() -1 +PUSKEW());
+}
 
 // I/O register macros
 #define BIT(r,b)    (b)
@@ -43,22 +54,31 @@
 #define PU_TX B,1
 #define PU_RX B,0
 
+/*
+__attribute((used))
+void bit_delay()
+{
+    __builtin_avr_delay_cycles(BIT_CYCLES());
+}
+*/
+
 __attribute((naked))
 void pu_tx(char c)
 {
     volatile char bitcnt = 10;          // start + 8bit + stop = 10 bits
     asm volatile (
+    // "rcall bit_delay\n"
     "cli\n"
     "sbi %[tx_ddr], %[tx_pin]\n"        // start bit 
     "in r0, %[tx_ddr]\n"                // save DDR in r0
     "com %[c]\n"                        // invert for open drain
     "Ltxbit:\n"
-    : [c] "+r" (c)
+    : [c] "+r" (c),
+      "+r" (bitcnt)                     // force bitcnt init
     : [tx_ddr] "I" (_SFR_IO_ADDR(ddr(PU_TX))),
-      [tx_pin] "I" (bit(PU_TX)),
-      "r" (bitcnt)                      // force bitcnt init
+      [tx_pin] "I" (bit(PU_TX))
     );
-    __builtin_avr_delay_cycles(PUTXWAIT);
+    __builtin_avr_delay_cycles(PUTXWAIT());
     // 7 cycle loop
     asm volatile (
     "bst %[c], 0\n"                     // store lsb in T
@@ -75,10 +95,12 @@ void pu_tx(char c)
     );
 }
 
-
 __attribute((naked))
 char pu_rx()
 {
+    //EEDR = BIT_CYCLES();    // debug
+    //EEDR = PURXWAIT();      // debug
+    //EEDR = (char)PUSKEW();  // debug
     char c;
     asm volatile (
     // wait for idle state (high)
@@ -94,9 +116,9 @@ char pu_rx()
     : [rx_pin] "I" (_SFR_IO_ADDR(pin(PU_RX))),
       [rx_bit] "I" (bit(PU_RX))
     );
-    __builtin_avr_delay_cycles(PURXSTART);
+    __builtin_avr_delay_cycles(PURXSTART());
     asm volatile ("Lrxbit:");
-    __builtin_avr_delay_cycles(PURXWAIT);
+    __builtin_avr_delay_cycles(PURXWAIT());
     // 5 cycle loop 
     asm volatile (
     "lsr %[c]\n" 
