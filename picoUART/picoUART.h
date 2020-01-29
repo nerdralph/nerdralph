@@ -21,6 +21,11 @@
 #define BAUD_RATE 115200L               // default baud rate
 #endif
 
+#ifndef PU_TX
+#define PU_TX B,1
+#define PU_RX B,0
+#endif
+
 // use static inline functions for type safety
 extern inline float BIT_CYCLES() {return F_CPU/(BAUD_RATE*1.0);}
 
@@ -51,30 +56,32 @@ extern inline int PURXSTART() {
 #define ddr(io)     DDR(io)
 #define pin(io)     PIN(io)
 
-#define PU_TX B,1
-#define PU_RX B,0
+// use up registers so only r18 & r19 are free for the compiler 
+#define alloc_regs()\
+    register long long dummy1 asm("r20");\
+    asm volatile ("" : "=r" (dummy1));\
+    register int dummy2 asm("r30");\
+    asm volatile ("" : "=r" (dummy2));
 
-/*
-__attribute((used))
-void bit_delay()
-{
-    __builtin_avr_delay_cycles(BIT_CYCLES());
-}
-*/
+#define touch_regs()\
+    asm volatile ("" :: "r" (dummy1));\
+    asm volatile ("" :: "r" (dummy2));
 
 __attribute((naked))
-void pu_tx(char c)
+void _pu_tx()
 {
-    volatile char bitcnt = 10;          // start + 8bit + stop = 10 bits
+    alloc_regs();
+    register char c asm("r26");
+    register char bitcnt asm("r27");
     asm volatile (
-    // "rcall bit_delay\n"
+    "ldi %[bitcnt], 10\n"               // start + 8bit + stop = 10 bits
     "cli\n"
     "sbi %[tx_ddr], %[tx_pin]\n"        // start bit 
     "in r0, %[tx_ddr]\n"                // save DDR in r0
     "com %[c]\n"                        // invert for open drain
     "Ltxbit:\n"
     : [c] "+r" (c),
-      "+r" (bitcnt)                     // force bitcnt init
+      [bitcnt] "+r" (bitcnt)
     : [tx_ddr] "I" (_SFR_IO_ADDR(ddr(PU_TX))),
       [tx_pin] "I" (bit(PU_TX))
     );
@@ -93,15 +100,21 @@ void pu_tx(char c)
     : [tx_ddr] "I" (_SFR_IO_ADDR(ddr(PU_TX))),
       [tx_pin] "I" (bit(PU_TX))
     );
+    touch_regs();
 }
 
-__attribute((naked))
-char pu_rx()
+inline void pu_tx(char c)
 {
-    //EEDR = BIT_CYCLES();    // debug
-    //EEDR = PURXWAIT();      // debug
-    //EEDR = (char)PUSKEW();  // debug
-    char c;
+    asm volatile ("" : "+x"(c) :: "r18", "r19");
+    _pu_tx();
+}
+
+
+__attribute((naked))
+void _pu_rx()
+{
+    alloc_regs();
+    register char c asm("r26");
     asm volatile (
     // wait for idle state (high)
     "1: sbis %[rx_pin], %[rx_bit]\n"
@@ -111,7 +124,6 @@ char pu_rx()
     // wait for start bit (low)
     "1: sbic %[rx_pin], %[rx_bit]\n"
     "rjmp 1b\n"
-    //"sbi %[rx_pin], 3\n"                // debug
     : [c] "=d" (c)
     : [rx_pin] "I" (_SFR_IO_ADDR(pin(PU_RX))),
       [rx_bit] "I" (bit(PU_RX))
@@ -124,13 +136,20 @@ char pu_rx()
     "lsr %[c]\n" 
     "sbic %[rx_pin], %[rx_bit]\n"
     "ori %[c], 0x80\n"
-    //"sbi %[rx_pin], 3\n"                // debug
     "brcc Lrxbit\n"
     "reti\n"
     : [c] "+d" (c)
     : [rx_pin] "I" (_SFR_IO_ADDR(pin(PU_RX))),
       [rx_bit] "I" (bit(PU_RX))
     );
+    touch_regs();
+}
+
+inline char pu_rx()
+{
+    register char c asm("r26");
+    _pu_rx();
+    asm volatile ("" : "=r"(c) :: "r18", "r19");
     return c;
 }
 
