@@ -1,19 +1,24 @@
-#define BAUD_RATE 38400
+// for picoUART 1-wire half duplex
+#define PU_TX B,1
+#define PU_RX B,1
 
 #include "picoUART.h"
 #include <util/delay.h>
 
-void puts(const char* s)
+void print(const char* s)
 {
     while (*s) pu_tx(*s++);
 }
 
-void wait2s() { _delay_ms(2000); }
+void wait1s() { _delay_ms(1000); }
 
 void main()
 {
     while (1) {
-        puts("picoUart\r\n");
-        wait2s();
+        print(" picoUart\r\n");
+        char c = pu_rx();
+        _delay_us(100);
+        pu_tx(c);
     }
 }
+
