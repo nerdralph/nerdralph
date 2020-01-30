@@ -71,8 +71,8 @@ __attribute((naked))
 void _pu_tx()
 {
     alloc_regs();
-    register char c asm("r26");
-    register char bitcnt asm("r27");
+    register char c asm("r24");
+    register char bitcnt asm("r25");
     asm volatile (
     "ldi %[bitcnt], 10\n"               // start + 8bit + stop = 10 bits
     "cli\n"
@@ -105,7 +105,8 @@ void _pu_tx()
 
 inline void pu_tx(char c)
 {
-    asm volatile ("" : "+x"(c) :: "r18", "r19");
+    register char ch asm("r24") = c;
+    asm volatile ("" : "+r"(ch) :: "r18", "r19");
     _pu_tx();
 }
 
@@ -114,7 +115,7 @@ __attribute((naked))
 void _pu_rx()
 {
     alloc_regs();
-    register char c asm("r26");
+    register char c asm("r24");
     asm volatile (
     // wait for idle state (high)
     "1: sbis %[rx_pin], %[rx_bit]\n"
@@ -147,7 +148,7 @@ void _pu_rx()
 
 inline char pu_rx()
 {
-    register char c asm("r26");
+    register char c asm("r24");
     _pu_rx();
     asm volatile ("" : "=r"(c) :: "r18", "r19");
     return c;
