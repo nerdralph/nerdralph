@@ -47,6 +47,12 @@ extern inline int PURXSTART() {
     return (BIT_CYCLES()*1.5 -3 -PURXWAIT() -1 +PUSKEW());
 }
 
+// min rx/tx turn-around time in resistor-only 1-wire mode
+inline void pu_rxtx_wait()
+{
+    __builtin_avr_delay_cycles(BIT_CYCLES()*1.5);
+}
+
 // I/O register macros
 #define BIT(r,b)    (b)
 #define PORT(r,b)   (PORT ## r)
@@ -57,11 +63,13 @@ extern inline int PURXSTART() {
 #define ddr(io)     DDR(io)
 #define pin(io)     PIN(io)
 
-// use up registers so only r26 & r27 are free for the compiler 
+const uint8_t pu_tx_bit;
+
+// use up registers so only r25:r24 are free for the compiler 
 #define alloc_regs()\
-    register long dummy1 asm("r18");\
+    register int dummy1 asm("r20");\
     asm volatile ("" : "=r" (dummy1));\
-    register long dummy2 asm("r22");\
+    register int dummy2 asm("r26");\
     asm volatile ("" : "=r" (dummy2));\
     register int dummy3 asm("r30");\
     asm volatile ("" : "=r" (dummy3));
@@ -75,10 +83,10 @@ __attribute((naked))
 void _pu_tx()
 {
     alloc_regs();
-    register char c asm("r22");
-    register char bitcnt asm("r23");
+    register char c asm("r18");
+    register char bitcnt asm("r19");
     asm volatile (
-    "ldi %[bitcnt], 10\n"               // start + 8bit + stop = 10 bits
+    "ldi %[bitcnt], 10\n"                // start + 8bit + stop = 10 bits
     "cli\n"
     "sbi %[tx_ddr], %[tx_pin]\n"        // start bit 
     "in r0, %[tx_ddr]\n"                // save DDR in r0
@@ -109,8 +117,8 @@ void _pu_tx()
 
 inline void pu_tx(char c)
 {
-    register char ch asm("r22") = c;
-    asm volatile ("%~call %x1" : "+r"(ch) : "i"(_pu_tx) : "r26", "r27");
+    register char ch asm("r18") = c;
+    asm volatile ("%~call %x1" : "+r"(ch) : "i"(_pu_tx) : "r19", "r24", "r25");
 }
 
 
@@ -118,7 +126,8 @@ __attribute((naked))
 void _pu_rx()
 {
     alloc_regs();
-    register char c asm("r22");
+    register char c asm("r18");
+    register char dummy4 asm("r19");
     asm volatile (
     // wait for idle state (high)
     "1: sbis %[rx_pin], %[rx_bit]\n"
@@ -144,15 +153,16 @@ void _pu_rx()
     "reti\n"
     : [c] "+d" (c)
     : [rx_pin] "I" (_SFR_IO_ADDR(pin(PU_RX))),
-      [rx_bit] "I" (bit(PU_RX))
+      [rx_bit] "I" (bit(PU_RX)),
+      "r" (dummy4)
     );
     touch_regs();
 }
 
 inline char pu_rx()
 {
-    register char c asm("r22");
-    asm ("%~call %x1" : "=r"(c) : "i"(_pu_rx) : "r26", "r27");
+    register char c asm("r18");
+    asm ("%~call %x1" : "=r"(c) : "i"(_pu_rx) : "r24", "r25");
     return c;
 }
 
