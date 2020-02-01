@@ -1,17 +1,18 @@
 /* optimized half-duplex high-speed AVR serial uart
  * Ralph Doncaster 2020 open source MIT license
- * open-drain UART requires external pullup between 4.7k and 10k
- * if remote Rx line does not already have a pullup
  *
  * picoUART is accurate to the cycle (+- 0.5 cycle error)
  * 0.64% error at 115.2k/8M and 0.4% error at 115.2k/9.6M
  *
  * define BAUD_RATE before including BBUart.h to change default baud rate 
  *
- * capable of single-pin operation (PU_TX = PU_RX)
+ * capable of single-pin operation (PU_TX = PU_RX) as follows:
+ * connect MCU pin to host RX line, and a 1.5k-4.7k resistor between
+ * host RX and TX line.  Note this also gives local echo.
  * 
  * 20200123 version 0.5
  * 20200123 version 0.6  - improve inline asm
+ * 20200201 version 0.7  - use push/pull during tx 
  */
 
 #pragma once
@@ -63,8 +64,6 @@ inline void pu_rxtx_wait()
 #define ddr(io)     DDR(io)
 #define pin(io)     PIN(io)
 
-const uint8_t pu_tx_bit;
-
 // use up registers so only r25:r24 are free for the compiler 
 #define alloc_regs()\
     register int dummy1 asm("r20");\
@@ -84,33 +83,34 @@ void _pu_tx()
 {
     alloc_regs();
     register char c asm("r18");
-    register char bitcnt asm("r19");
+    register char sr asm("r19");
     asm volatile (
-    "ldi %[bitcnt], 10\n"                // start + 8bit + stop = 10 bits
+    "cbi %[tx_port], %[tx_bit]\n"       // disable pullup
     "cli\n"
-    "sbi %[tx_ddr], %[tx_pin]\n"        // start bit 
-    "in r0, %[tx_ddr]\n"                // save DDR in r0
-    "com %[c]\n"                        // invert for open drain
+    "sbi %[tx_port]-1, %[tx_bit]\n"     // start bit 
+    "in r0, %[tx_port]\n"               // save DDR in r0
+    "ldi %[sr], 3\n"                    // stop bit & idle state
     "Ltxbit:\n"
     : [c] "+r" (c),
-      [bitcnt] "+r" (bitcnt)
-    : [tx_ddr] "I" (_SFR_IO_ADDR(ddr(PU_TX))),
-      [tx_pin] "I" (bit(PU_TX))
+      [sr] "+r" (sr)
+    : [tx_port] "I" (_SFR_IO_ADDR(port(PU_TX))),
+      [tx_bit] "I" (bit(PU_TX))
     );
     __builtin_avr_delay_cycles(PUTXWAIT());
     // 7 cycle loop
     asm volatile (
     "bst %[c], 0\n"                     // store lsb in T
-    "bld r0, %[tx_pin]\n"
-    "lsr %[c]\n"                        // shift for next bit
-    "dec %[bitcnt]\n"
-    "out %[tx_ddr], r0\n"
+    "bld r0, %[tx_bit]\n"
+    "lsr %[sr]\n"                       // 2-byte shift register
+    "ror %[c]\n"                        // shift for next bit
+    "out %[tx_port], r0\n"
     "brne Ltxbit\n"
+    "cbi %[tx_port]-1, %[tx_bit]\n"     // set to input mode
     "reti\n"                            // return & enable interrupts
     : [c] "+r" (c),
-      [bitcnt] "+r" (bitcnt)
-    : [tx_ddr] "I" (_SFR_IO_ADDR(ddr(PU_TX))),
-      [tx_pin] "I" (bit(PU_TX))
+      [sr] "+r" (sr)
+    : [tx_port] "I" (_SFR_IO_ADDR(port(PU_TX))),
+      [tx_bit] "I" (bit(PU_TX))
     );
     touch_regs();
 }

@@ -1,23 +1,27 @@
-// for picoUART 1-wire half duplex
-#define PU_TX B,1
-#define PU_RX B,1
+// set RX & TX the same for picoUART 1-wire simplex mode
+#define PU_TX B,3
+#define PU_RX B,3
 
+//#define BAUD_RATE 9600
 #include "picoUART.h"
 #include <util/delay.h>
+#include <avr/pgmspace.h>
 
-void print(const char* s)
+
+void prints_P(const __flash char* s)
 {
-    while (*s) pu_tx(*s++);
+    char c;
+    //while (c = pgm_read_byte(s++))
+    while (c = *s++)
+        pu_tx(c);
 }
-
-void wait1s() { _delay_ms(1000); }
 
 void main()
 {
     while (1) {
-        print(" picoUart\r\n");
+        prints_P(PSTR(" picoUart\r\n"));
         char c = pu_rx();
-        _delay_us(100);
+        //pu_rxtx_wait();
         pu_tx(c);
     }
 }
