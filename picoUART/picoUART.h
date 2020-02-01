@@ -11,6 +11,7 @@
  * capable of single-pin operation (PU_TX = PU_RX)
  * 
  * 20200123 version 0.5
+ * 20200123 version 0.6  - improve inline asm
  */
 
 #pragma once
@@ -56,23 +57,26 @@ extern inline int PURXSTART() {
 #define ddr(io)     DDR(io)
 #define pin(io)     PIN(io)
 
-// use up registers so only r18 & r19 are free for the compiler 
+// use up registers so only r26 & r27 are free for the compiler 
 #define alloc_regs()\
-    register long long dummy1 asm("r20");\
+    register long dummy1 asm("r18");\
     asm volatile ("" : "=r" (dummy1));\
-    register int dummy2 asm("r30");\
-    asm volatile ("" : "=r" (dummy2));
+    register long dummy2 asm("r22");\
+    asm volatile ("" : "=r" (dummy2));\
+    register int dummy3 asm("r30");\
+    asm volatile ("" : "=r" (dummy3));
 
 #define touch_regs()\
     asm volatile ("" :: "r" (dummy1));\
-    asm volatile ("" :: "r" (dummy2));
+    asm volatile ("" :: "r" (dummy2));\
+    asm volatile ("" :: "r" (dummy3));
 
 __attribute((naked))
 void _pu_tx()
 {
     alloc_regs();
-    register char c asm("r24");
-    register char bitcnt asm("r25");
+    register char c asm("r22");
+    register char bitcnt asm("r23");
     asm volatile (
     "ldi %[bitcnt], 10\n"               // start + 8bit + stop = 10 bits
     "cli\n"
@@ -105,9 +109,8 @@ void _pu_tx()
 
 inline void pu_tx(char c)
 {
-    register char ch asm("r24") = c;
-    asm volatile ("" : "+r"(ch) :: "r18", "r19");
-    _pu_tx();
+    register char ch asm("r22") = c;
+    asm volatile ("%~call %x1" : "+r"(ch) : "i"(_pu_tx) : "r26", "r27");
 }
 
 
@@ -115,7 +118,7 @@ __attribute((naked))
 void _pu_rx()
 {
     alloc_regs();
-    register char c asm("r24");
+    register char c asm("r22");
     asm volatile (
     // wait for idle state (high)
     "1: sbis %[rx_pin], %[rx_bit]\n"
@@ -148,9 +151,8 @@ void _pu_rx()
 
 inline char pu_rx()
 {
-    register char c asm("r24");
-    _pu_rx();
-    asm volatile ("" : "=r"(c) :: "r18", "r19");
+    register char c asm("r22");
+    asm ("%~call %x1" : "=r"(c) : "i"(_pu_rx) : "r26", "r27");
     return c;
 }
 
