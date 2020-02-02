@@ -29,29 +29,29 @@
 #endif
 
 // use static inline functions for type safety
-extern inline float BIT_CYCLES() {return F_CPU/(BAUD_RATE*1.0);}
+extern inline float PUBIT_CYCLES() {return F_CPU/(BAUD_RATE*1.0);}
 
 // delay based on cycle count of asm code + 0.5 for rounding
-extern inline int PUTXWAIT() {return BIT_CYCLES() - 7 + 0.5;}
-extern inline int PURXWAIT() {return BIT_CYCLES() - 5 + 0.5;}
+extern inline int PUTXWAIT() {return PUBIT_CYCLES() - 7 + 0.5;}
+extern inline int PURXWAIT() {return PUBIT_CYCLES() - 5 + 0.5;}
 
 // correct for PURXWAIT skew in PURXSTART calculation
 // skew is half of 7 delay intervals between 8 bits
 extern inline float PUSKEW() {
-    return (BIT_CYCLES() - (int)(BIT_CYCLES() + 0.5)) * 3.5;
+    return (PUBIT_CYCLES() - (int)(PUBIT_CYCLES() + 0.5)) * 3.5;
 }
 // Time from falling edge of start bit to sample 1st bit is 1.5 *
 // bit-time. Subtract 2 cycles for sbic, 1 for lsr, and PURXWAIT.
 // Subtract 1.5 cycles because start bit detection is accurate to
 // +-1.5 cycles.  Add 0.5 cycles for int rounding, and add skew.
 extern inline int PURXSTART() {
-    return (BIT_CYCLES()*1.5 -3 -PURXWAIT() -1 +PUSKEW());
+    return (PUBIT_CYCLES()*1.5 -3 -PURXWAIT() -1 +PUSKEW());
 }
 
 // min rx/tx turn-around time in resistor-only 1-wire mode
 inline void pu_rxtx_wait()
 {
-    __builtin_avr_delay_cycles(BIT_CYCLES()*1.5);
+    __builtin_avr_delay_cycles(PUBIT_CYCLES()*1.5);
 }
 
 // I/O register macros
