@@ -5,7 +5,8 @@ Code size is less than 80 bytes total for transmit and receive.
 picoUART timing is accurate to the cycle (+- 0.5 cycle error);
 this is less than 1% at 8Mhz.
 
-picoUART is also capable of single-pin (shared Rx/Tx) operation.
+Default Rx is on PB0, and Tx is on PB1.  If set to the same pin,
+picoUART is also capable of 1-wire (shared Rx/Tx) operation.
 
 picoUART is a header-only library that is compatible with the Arduino API
 but is not dependent on any Arduino functions so it can be used with
