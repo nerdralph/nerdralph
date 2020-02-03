@@ -13,6 +13,7 @@
  * 20200123 version 0.5
  * 20200123 version 0.6  - improve inline asm
  * 20200201 version 0.7  - use push/pull during tx 
+ * 20200203 version 0.8  - add prints_P, prefix globals with PU_
  */
 
 #pragma once
