@@ -1,9 +1,17 @@
 // picoUART echo test
 
+// override default baud rate
+#define PU_BAUD_RATE 230400 
+
 #include <picoUART.h>
-#include <pu_print.h>
+#include <avr/pgmspace.h>
 
 void setup() {}
 
-// see pu_print.c for test loop() code
-
+void loop()
+{
+    prints_P(PSTR("\r\npicoUART echo "));
+    // read then echo 1 character
+    char c = pu_rx();
+    pu_tx(c);
+}
