@@ -4,7 +4,7 @@
  * picoUART is accurate to the cycle (+- 0.5 cycle error)
  * 0.64% error at 115.2k/8M and 0.4% error at 115.2k/9.6M
  *
- * define BAUD_RATE before including BBUart.h to change default baud rate 
+ * define PU_BAUD_RATE before #include to change default baud rate 
  *
  * capable of single-pin operation (PU_TX = PU_RX) as follows:
  * connect MCU pin to host RX line, and a 1.5k-4.7k resistor between
@@ -19,8 +19,12 @@
 
 #include <avr/io.h>
 
-#ifndef BAUD_RATE
-#define BAUD_RATE 115200L               // default baud rate
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef PU_BAUD_RATE
+#define PU_BAUD_RATE 115200L            // default baud rate
 #endif
 
 #ifndef PU_TX
@@ -29,7 +33,7 @@
 #endif
 
 // use static inline functions for type safety
-extern inline float PUBIT_CYCLES() {return F_CPU/(BAUD_RATE*1.0);}
+extern inline float PUBIT_CYCLES() {return F_CPU/(PU_BAUD_RATE*1.0);}
 
 // delay based on cycle count of asm code + 0.5 for rounding
 extern inline int PUTXWAIT() {return PUBIT_CYCLES() - 7 + 0.5;}
@@ -121,6 +125,22 @@ inline void pu_tx(char c)
     asm volatile ("%~call %x1" : "+r"(ch) : "i"(_pu_tx) : "r19", "r24", "r25");
 }
 
+inline void prints_P(const char* s)
+{
+    register char c asm("r18");
+    asm volatile (
+    "1:\n"
+    "lpm %[c], %a0+\n"                  // read next char
+    "tst %[c]\n"
+    "breq 1f\n"
+    "%~call %x2\n"
+    "rjmp 1b\n"
+    "1:\n"
+    : "+e" (s), [c] "+r" (c)
+    : "i" (_pu_tx)
+    : "r19", "r24", "r25"
+    );
+}
 
 __attribute((naked))
 void _pu_rx()
@@ -165,4 +185,8 @@ inline char pu_rx()
     asm ("%~call %x1" : "=r"(c) : "i"(_pu_rx) : "r24", "r25");
     return c;
 }
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
