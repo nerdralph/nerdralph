@@ -11,19 +11,15 @@ const unsigned LED_GPIO = 4;
 
 uint8_t rise_time()
 {
-    // use 2 variables to make the compiler generate the asm I want
-    uint8_t time1 = 0, time2 = 0;
-    // force gcc to assign time1 & time2 before pullup
-    asm ("" : "+r"(time1), "+r"(time2));
+    uint8_t time = 0;
     DDRB &= ~(1<<TOUCH_GPIO);           // input mode
-    PORTB |= (1<<TOUCH_GPIO);           // pullup on
     do {
-        time1++;
-        if (bit_is_clear(PINB, TOUCH_GPIO)) time2++;
+        PINB = (1<<TOUCH_GPIO);           // pullup on
+        PINB = (1<<TOUCH_GPIO);           // pullup off
+        time++;
     } while (bit_is_clear(PINB, TOUCH_GPIO));
-    PORTB &= ~(1<<TOUCH_GPIO);          // pullup off
     DDRB |= (1<<TOUCH_GPIO);            // discharge
-    return (uint8_t)(time1 + time2);
+    return time;
 }
 
 
