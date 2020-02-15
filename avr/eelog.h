@@ -1,7 +1,6 @@
 /* avr eeprom debug logging
  * http://nerdralph.blogspot.ca
  * @author: Ralph Doncaster 2015
- * define ISR_SAFE before including eelog.h if interrupts are enabled
  */
 
 #include <avr/io.h>
@@ -10,17 +9,16 @@
 
 void eelog(char logdata)
 {
-    eeprom_busy_wait();
+    while (!eeprom_is_ready());
+    // EEARL can't be changed while eeprom busy
     EEARL = (EEARL + 1);
     EEDR = logdata;
-#ifdef ISR_SAFE
-    cli();
-#endif
-    EECR |= (1<<EEMPE);
-    EECR |= (1<<EEPE);
-#ifdef ISR_SAFE
-    sei();
-#endif
+
+    // ISR could occur before EEPE is set so repeat until it worked
+    do {
+        EECR |= (1<<EEMPE);
+        EECR |= (1<<EEPE);
+    } while (eeprom_is_ready());
 }
 
 __attribute__ ((naked))\
