@@ -36,8 +36,8 @@ main:
 2:  ; write 1 line of ASCII
     mov r24, r18
     rcall ttx
-    dec r19
-    brne .-4                ; inter-char delay
+    ;dec r19
+    ;brne .-4                ; inter-char delay
     inc r18
     cpi r18, 0x7f
     brne 2b
