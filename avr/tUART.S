@@ -4,6 +4,7 @@
 #define TX_GPIO 4
 
 ; high-speed 8N1 UART - 13 instructions + ret
+; ASCII only (bit 7 must be 0)
 ; r24 = char to tx, clobbers r0, r25
 ttx:
     ldi r25, 1<<TX_GPIO
@@ -22,7 +23,6 @@ morebits:                   ; 5 cycle loop
     cbi DDRB, TX_GPIO       ; pullup mode
     ret
 
-    
 .global main
 main:
     in r24, OSCCAL
