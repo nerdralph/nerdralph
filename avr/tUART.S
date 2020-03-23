@@ -1,10 +1,12 @@
+; Ralph Doncaster 2020 open source MIT license
+; high-speed 8N1 UART - 13 instructions + ret
+; ASCII only (bit 7 must be 0)
+
 #define __SFR_OFFSET 0
 #include <avr/io.h>
 
 #define TX_GPIO 4
 
-; high-speed 8N1 UART - 13 instructions + ret
-; ASCII only (bit 7 must be 0)
 ; r24 = char to tx, clobbers r0, r25
 ttx:
     ldi r25, 1<<TX_GPIO
