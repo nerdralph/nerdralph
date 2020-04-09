@@ -11,25 +11,25 @@
 ttx:
     ldi r25, 1<<TX_GPIO
     mov r0, r24
-    ror r0
+    lsl r0
     eor r0, r24             ; now 1=toggle, 0 = n/c
     cbi PORTB, TX_GPIO      ; disable pullup
     sbi DDRB, TX_GPIO       ; start bit
-    brcc 1f                 ; no toggle
+    sbrc r0, 0
     out PINB, r25           ; bit 0
-1:  sbrc r0, 0
-    out PINB, r25           ; bit 1
     sbrc r0, 1
-    out PINB, r25           ; bit 2
+    out PINB, r25           ; bit 1
     sbrc r0, 2
-    out PINB, r25           ; bit 3
+    out PINB, r25           ; bit 2
     sbrc r0, 3
-    out PINB, r25           ; bit 4
+    out PINB, r25           ; bit 3
     sbrc r0, 4
-    out PINB, r25           ; bit 5
+    out PINB, r25           ; bit 4
     sbrc r0, 5
-    out PINB, r25           ; bit 6
+    out PINB, r25           ; bit 5
     sbrc r0, 6
+    out PINB, r25           ; bit 6
+    sbrc r0, 7
     out PINB, r25           ; bit 7
     sbi PORTB, TX_GPIO      ; stop bit
     cbi DDRB, TX_GPIO       ; pullup mode
@@ -41,8 +41,8 @@ main:
     subi r24, -11           ; tune oscillator
     out OSCCAL, r24
 1:  ; loop
-    ldi r18, '0'            ; '0' = 0x30
     ldi r18, ' '            ; space = ASCII 0x20
+    ldi r18, '0'            ; '0' = 0x30
 2:  ; write 1 line of ASCII
     mov r24, r18
     rcall ttx
