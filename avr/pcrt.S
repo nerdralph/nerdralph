@@ -1,3 +1,6 @@
+; Ralph Doncaster 2020 MIT Licence open source
+; pico crt: 12 bytes smaller than gcrt1 when used with -nostartfiles 
+
 #include <avr/io.h>
 
 	.macro	vector name
@@ -32,7 +35,7 @@ __vectors:
 	vector __vector_18
 	vector __vector_19
 
-;	.text
+	.text
 	.global __empty_interrupt
 __empty_interrupt:
 	reti
@@ -41,8 +44,16 @@ __empty_interrupt:
 __init:
 
     .section .init2
-    clr r1
+    ;clr r1
+    ; clear all mem < 0xFF and regs < r28 instead of just bss
+    .global __do_clear_bss
+__do_clear_bss:
+    clr ZH
+    ldi ZL, 28
+1:  st -Z, r31
+    brne 1b
+
 
     .section .init9
+; could put main init9 to save rjmp
     rjmp main
-
