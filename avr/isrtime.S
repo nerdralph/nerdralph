@@ -7,7 +7,7 @@
 #include <avr/io.h>
 
 .equ GPIO, 1                            ; GPIO for PWM
-.equ INTPIN, 2
+.equ INTPIN, 1
 .equ LED, 4
 
 .global INT0_vect
