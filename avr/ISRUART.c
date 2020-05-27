@@ -1,28 +1,47 @@
-// t13 timer ISR transmit using OC0A 
+// (c) Ralph Doncaster 2020
+// Non-commercial use and modification of this code is permitted.
+// Contact ralphdoncaster at gmail for commercial use requests.
+// Any re-distribution must include this notice.
+//
+// AVR WGM UART using timer/counter0
+// Maximum baud rate is 1/100th of clock rate, i.e. 80kbps for 8Mhz
 
+#include <stdbool.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/pgmspace.h>
 #include <util/delay.h>
 
 // global for write
-__attribute(( section(".noinit") ))
-uint8_t outChar;
+__attribute(( section(".noinit") )) uint8_t wgm_txdata;
+__attribute(( section(".noinit") )) uint8_t wgm_rxdata;
 
-#define OC0A PB0
+#ifndef OC0A_BIT
+#define OC0A_BIT PB0
+#define OC0A_DDR DDRB
+#endif
 
 #define BAUD_RATE 38400
 
+#define WGMRXBIT 1
+
+const int LED = 4;
+
 #define DIVIDE_ROUNDED(NUMBER, DIVISOR) ((((2*(NUMBER))/(DIVISOR))+1)/2)
 // #define BITTIME DIVIDE_ROUNDED(F_CPU, BAUD_RATE)
-#define PRESCALER 8
+#define PRESCALER 8L
 #define TICKS_PER_BIT DIVIDE_ROUNDED(F_CPU, PRESCALER * BAUD_RATE)
-#if (TICKS_PER_BIT > 256)
+
+#if (TICKS_PER_BIT > 171)
 #error badurate too low
 #endif
+#if (TICKS_PER_BIT * PRESCALER < 100)
+#error badurate too high
+#endif
 
-// WGM01 = CTC mode
-#define CLEAR_ON_MATCH ((1<<COM0A1) | (1<<WGM01))
-#define SET_ON_MATCH ((1<<COM0A1) | (1<<COM0A0) | (1<<WGM01))
+// timer normal waveform generation mode
+#define CLEAR_ON_MATCH (1<<COM0A1)
+#define SET_ON_MATCH ((1<<COM0A1) | (1<<COM0A0))
 
 #ifdef DEBUG
 #define debug() PINB = 1<<PB2
@@ -35,16 +54,16 @@ uint8_t outChar;
 #define TIFR TIFR0
 #endif
 
-ISR(TIM0_COMPA_vect)
+// Tx ISR 44 cycles incl reti
+ISR(TIM0_COMPA_vect, ISR_NOBLOCK)
 //ISR(TIMER0_COMPA_vect)
 {
     debug();
     //TIFR = 1<<OCF0A;              // clear flag
-    uint8_t ch = outChar;
+    uint8_t ch = wgm_txdata;
     if (ch == 0) {                      // tx finished
-        TIMSK = 0;
-        //TCCR0A = 0;                     // disconnect OC0A
-        //TIMSK0 &= ~(1<<OCIE0A);
+        //TCCR0A = 0;                   // disconnect OC0A
+        TIMSK &= ~(1<<OCIE0A);
         return;
     }
 
@@ -54,18 +73,66 @@ ISR(TIM0_COMPA_vect)
         TCCR0A = CLEAR_ON_MATCH;
 
     ch >>= 1;
-    outChar = ch;
-    //OCR0A += BITTIME;
+    wgm_txdata = ch;
+    OCR0A += TICKS_PER_BIT;
     debug();
 }
 
+// Rx start ISR
+ISR(PCINT0_vect)
+{
+    //PINB |= 1<<LED;
+    // 45 cycle ISR overhead calculated from disassembly
+    uint8_t isr_overhead_ticks = DIVIDE_ROUNDED(45, PRESCALER);
+    uint8_t first_bit_ticks = (TICKS_PER_BIT * 1.5) - isr_overhead_ticks;
+    OCR0B = TCNT0 + first_bit_ticks;
+    PCMSK &= ~(1<<WGMRXBIT);            // turn off PCINT
+    wgm_rxdata = 0x80;                  // setup bit shift counter
+    TIFR = 1<<OCF0B;                    // clear OC0B flag
+    TIMSK |= 1<<OCIE0B;                 // enable Rx timer ISR
+}
+
+// Rx bit ISR 42c incl reti
+ISR(TIM0_COMPB_vect)
+{
+    //PINB |= 1<<LED;
+    uint8_t data = wgm_rxdata;
+    bool lastbit = data & 0x01;
+    data /= 2;                          // shift right
+    if (PINB & (1<<WGMRXBIT) )
+        data |= 0x80;
+    wgm_rxdata = data;
+    if (lastbit)
+        TIMSK &= ~(1<<OCIE0B);          // disable ISR
+    OCR0B += TICKS_PER_BIT;             // set time for next bit
+}
+
+bool rx_data_ready()
+{
+    // data is ready if PCINT & TIM0_COMPB disabled
+    return !(PCMSK & 1<<WGMRXBIT) && !(TIMSK & 1<<OCIE0B);
+}
+
+uint8_t rx_read()
+{
+    uint8_t data = wgm_rxdata;
+    // wait for stop bit/idle
+    loop_until_bit_is_set(PINB, WGMRXBIT);
+    PCMSK |= 1<<WGMRXBIT;               // enable Rx ISR
+    return data;
+}
+
 void UARTsetup() {
-    //PORTB |= 1<<OC0A;                   // idle state = high
+    // Tx setup
     TCCR0A = SET_ON_MATCH;
-    OCR0A = TICKS_PER_BIT;
     // start timer0 /8 prescaler, force compare
     TCCR0B = 1<<CS01 | 1<<FOC0A;
-    DDRB |= 1<<OC0A;
+    OC0A_DDR |= 1<<OC0A_BIT;
+
+    // Rx setup
+    PCMSK |= 1<<WGMRXBIT;
+    GIMSK = 1<<PCIE;
+    sei();
 }
 
 //__attribute(( noinline ))
@@ -77,42 +144,47 @@ void write(uint8_t c) {
     // todo: disable/enable interrupts
     TIFR = 1<<OCF0A;
     TCCR0A = CLEAR_ON_MATCH;            // setup for start bit
-    TCNT0 = 0;                          // or TCNT0 = 1 after FOC?
     // timer0 /8 prescaler, force compare
     TCCR0B = 1<<CS01 | 1<<FOC0A;
+    OCR0A = TCNT0 + TICKS_PER_BIT;
 
     // if first bit is set, switch to SET_ON_MATCH
     if (c & 0x01)
         TCCR0A = SET_ON_MATCH;
 
     // high bit flag for end of byte
-    outChar = (c>>1) | 0x80;
-    TIMSK = 1<<OCIE0A;
+    wgm_txdata = (c>>1) | 0x80;
+    TIMSK |= 1<<OCIE0A;
+}
+
+void prints_P(const __flash char* s)
+{
+    while (*s) write(*s++);
 }
 
 void main() {
     UARTsetup();
     //DDRB |= 1<<PB2;             // debug
-    sei();
-    _delay_ms(1000);
+    DDRB |= 1<<LED;
+    prints_P(PSTR("\nwgmUART echo\n"));
     const unsigned ovf_per_sec = F_CPU / PRESCALER / 256;
-    uint32_t overflows = 0;
+    unsigned overflows = 0;
     while (1) {
-        /*
+        if ( rx_data_ready() ) {
+            write( rx_read() ); 
+        }
         if (TIFR & 1<<TOV0) {
             TIFR = 1<<TOV0;       // clear overflow flag
             overflows++;
         }
-        */
-        //if ( overflows == (ovf_per_sec / 4) ) {
-        TIFR = overflows & 0x1;
-        if ( ++overflows == 1L<<18) {
+        if ( overflows == (ovf_per_sec) ) {
             overflows = 0;
-            write('@');
-            write(0x55);
-            write(0x20);
+            write('.');
+            //write('@');
+            //write(0x55);
+            //write(0x20);
+            //PINB |= 1<<LED;
         }
-        //_delay_us(1);
     }
 }
 
