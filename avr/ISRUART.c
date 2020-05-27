@@ -3,10 +3,9 @@
 // Contact ralphdoncaster at gmail for commercial use requests.
 // Any re-distribution must include this notice.
 //
-// AVR WGM UART using timer/counter0
+// AVR WGM full-duplex UART using timer/counter0
 // Maximum baud rate is 1/100th of clock rate, i.e. 80kbps for 8Mhz
 
-#include <stdbool.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
@@ -28,7 +27,6 @@ __attribute(( section(".noinit") )) uint8_t wgm_rxdata;
 const int LED = 4;
 
 #define DIVIDE_ROUNDED(NUMBER, DIVISOR) ((((2*(NUMBER))/(DIVISOR))+1)/2)
-// #define BITTIME DIVIDE_ROUNDED(F_CPU, BAUD_RATE)
 #define PRESCALER 8L
 #define TICKS_PER_BIT DIVIDE_ROUNDED(F_CPU, PRESCALER * BAUD_RATE)
 
@@ -58,8 +56,6 @@ const int LED = 4;
 ISR(TIM0_COMPA_vect, ISR_NOBLOCK)
 //ISR(TIMER0_COMPA_vect)
 {
-    debug();
-    //TIFR = 1<<OCF0A;              // clear flag
     uint8_t ch = wgm_txdata;
     if (ch == 0) {                      // tx finished
         //TCCR0A = 0;                   // disconnect OC0A
@@ -81,7 +77,7 @@ ISR(TIM0_COMPA_vect, ISR_NOBLOCK)
 // Rx start ISR
 ISR(PCINT0_vect)
 {
-    //PINB |= 1<<LED;
+    debug();
     // 45 cycle ISR overhead calculated from disassembly
     uint8_t isr_overhead_ticks = DIVIDE_ROUNDED(45, PRESCALER);
     uint8_t first_bit_ticks = (TICKS_PER_BIT * 1.5) - isr_overhead_ticks;
@@ -95,9 +91,9 @@ ISR(PCINT0_vect)
 // Rx bit ISR 42c incl reti
 ISR(TIM0_COMPB_vect)
 {
-    //PINB |= 1<<LED;
+    debug();
     uint8_t data = wgm_rxdata;
-    bool lastbit = data & 0x01;
+    uint8_t lastbit = data & 0x01;
     data /= 2;                          // shift right
     if (PINB & (1<<WGMRXBIT) )
         data |= 0x80;
@@ -107,7 +103,8 @@ ISR(TIM0_COMPB_vect)
     OCR0B += TICKS_PER_BIT;             // set time for next bit
 }
 
-bool rx_data_ready()
+// returns true when there is data to read
+uint8_t rx_data_ready()
 {
     // data is ready if PCINT & TIM0_COMPB disabled
     return !(PCMSK & 1<<WGMRXBIT) && !(TIMSK & 1<<OCIE0B);
@@ -135,7 +132,6 @@ void UARTsetup() {
     sei();
 }
 
-//__attribute(( noinline ))
 void write(uint8_t c) {
     while (TIMSK & 1<<OCIE0A);         // wait for last tx to finish
     // OC0A still running in SET_ON_MATCH mode during idle
@@ -164,7 +160,6 @@ void prints_P(const __flash char* s)
 
 void main() {
     UARTsetup();
-    //DDRB |= 1<<PB2;             // debug
     DDRB |= 1<<LED;
     prints_P(PSTR("\nwgmUART echo\n"));
     const unsigned ovf_per_sec = F_CPU / PRESCALER / 256;
@@ -177,13 +172,11 @@ void main() {
             TIFR = 1<<TOV0;       // clear overflow flag
             overflows++;
         }
+        // write a dot and toggle LED every second
         if ( overflows == (ovf_per_sec) ) {
             overflows = 0;
             write('.');
-            //write('@');
-            //write(0x55);
-            //write(0x20);
-            //PINB |= 1<<LED;
+            PINB |= 1<<LED;
         }
     }
 }
