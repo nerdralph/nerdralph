@@ -8,6 +8,7 @@
 // 
 // 20200526 v0.1.0 working version in C
 // 20200531 v0.1.1 COMPA & COMPB ISR in asm
+// 20200602 v0.2.0 beta up to 115.2kbps @8M
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -53,8 +54,8 @@ const int LED = 4;
 #define TIFR TIFR0
 #endif
 
-// Rx start ISR 27c incl reti
-// TCNT0 sampled 8c into ISR + 6c PCINT latency + 2c rjmp = 16c
+// Rx start ISR 23c incl reti
+// TCNT0 sampled 6c into ISR + 6c PCINT latency + 2c rjmp = 14c
 ISR(PCINT0_vect, ISR_NAKED)
 {
     debug();
@@ -62,8 +63,8 @@ ISR(PCINT0_vect, ISR_NAKED)
     "in r2, __SREG__    \n"             // r2 fixed register
     "push r24           \n"             // ISR only uses r24
     );
-    // 32 cycle PCINT + COMPB ISR overhead from asm cycle count
-    uint8_t isr_overhead_ticks = DIVIDE_ROUNDED(32, PRESCALER);
+    // 29 cycle PCINT + COMPB ISR average overhead from asm cycle count
+    uint8_t isr_overhead_ticks = DIVIDE_ROUNDED(29, PRESCALER);
     uint8_t first_bit_ticks = (TICKS_PER_BIT * 1.5) - isr_overhead_ticks;
     PCMSK &= ~(1<<WGMRXBIT);            // turn off PCINT
     OCR0B = TCNT0 + first_bit_ticks;
