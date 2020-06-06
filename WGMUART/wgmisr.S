@@ -17,14 +17,13 @@
     \name:
 .endm
 
-; t13 and t85 use TIMSK0/TIMSK but same address
-.equiv T0INTMSK, 0x39
-
 ; tx bit ISR 25c incl reti
 compa_ISR_off:
-    in r24, T0INTMSK
+    cli
+    in r24, TIMSK
     cbr r24, 1<<OCIE0A
-    out T0INTMSK, r24               ; disable ISR
+    sei
+    out TIMSK, r24                  ; disable ISR
     rjmp setOCR
 GLABEL TIM0_COMPA_vect              ; t13
 GLABEL TIMER0_COMPA_vect            ; t85
@@ -55,21 +54,32 @@ GLABEL TIM0_COMPB_vect              ; t13
 GLABEL TIMER0_COMPB_vect            ; t85
     in r22, SREG
     push r24
-    lds r24, wgm_rxdata
+    lds r24, wgm_rxdata0
     bst r24, 0                      ; save LSB in T
     lsr r24
     sbic PINB, WGMRXBIT             ; 10c
     ori r24, 0x80                   ; rx bit is a 1
-    sts wgm_rxdata, r24
+    sts wgm_rxdata0, r24
     in r24, OCR0B
     ADDI r24, TICKS_PER_BIT
     out OCR0B, r24                  ; set time for next bit
     brtc epilogue                   ; still more bits to rx
-    in r24, T0INTMSK
+    in r24, TIMSK
     cbr r24, 1<<OCIE0B
-    out T0INTMSK, r24               ; disable ISR
-    sbi PORTB, WGMRXBIT             ; flag Rx complete
+    out TIMSK, r24                  ; disable T0 ISR
+    sbis PORTB, WGMRXBIT            ; rxdata1 full?
+    rjmp copyrxdata
+    sbi OC0A_PORT, OC0A_BIT
     rjmp epilogue
+copyrxdata:
+    lds r24, wgm_rxdata0
+    sts wgm_rxdata1, r24
+    sbi PORTB, WGMRXBIT             ; flag Rx data available
+1:  sbis PINB, WGMRXBIT             ; wait for stop bit
+    rjmp 1b
+    sbi PCMSK, WGMRXBIT             ; enable PCINT for next byte
+    rjmp epilogue
+
 
 ;.section .noinit, "aw", @nobits
 ;.global wgm_txdata

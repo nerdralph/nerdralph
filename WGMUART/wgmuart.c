@@ -9,6 +9,7 @@
 // 20200526 v0.1.0 working version in C
 // 20200531 v0.1.1 COMPA & COMPB ISR in asm
 // 20200602 v0.2.0 beta up to 115.2kbps @8M
+// 20200606 v0.3.0 adds 2-level Rx FIFO
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -17,14 +18,10 @@
 #include "wgmuart.h"
 
 __attribute(( section(".noinit") )) uint8_t wgm_txdata;
-__attribute(( section(".noinit") )) uint8_t wgm_rxdata;
+__attribute(( section(".noinit") )) uint8_t wgm_rxdata0;
+__attribute(( section(".noinit") )) uint8_t wgm_rxdata1;
 
-#ifndef OC0A_BIT
-#define OC0A_BIT PB0
-#define OC0A_DDR DDRB
-#endif
-
-#define BAUD_RATE 115200
+#define BAUD_RATE 57600
 
 const int LED = 4;
 
@@ -49,11 +46,6 @@ const int LED = 4;
 #define debug() {}
 #endif
 
-#ifdef TIMSK0
-#define TIMSK TIMSK0
-#define TIFR TIFR0
-#endif
-
 // Rx start ISR 23c incl reti
 // TCNT0 sampled 6c into ISR + 6c PCINT latency + 2c rjmp = 14c
 ISR(PCINT0_vect, ISR_NAKED)
@@ -68,7 +60,7 @@ ISR(PCINT0_vect, ISR_NAKED)
     uint8_t first_bit_ticks = (TICKS_PER_BIT * 1.5) - isr_overhead_ticks;
     PCMSK &= ~(1<<WGMRXBIT);            // turn off PCINT
     OCR0B = TCNT0 + first_bit_ticks;
-    wgm_rxdata = 0x80;                  // setup bit shift counter
+    wgm_rxdata0 = 0x80;                 // setup bit shift counter
     TIFR = 1<<OCF0B;                    // clear OC0B flag
     TIMSK |= 1<<OCIE0B;                 // enable Rx timer ISR
     asm( "rjmp epilogue" );
@@ -77,18 +69,28 @@ ISR(PCINT0_vect, ISR_NAKED)
 // returns true when there is data to read
 uint8_t rx_data_ready()
 {
-    // data is ready if PCINT & TIM0_COMPB disabled
-    //return !(PCMSK & 1<<WGMRXBIT) && !(TIMSK & 1<<OCIE0B);
     return (PORTB & 1<<WGMRXBIT);
 }
 
+// todo: ensure no race conditions in rx_read
 uint8_t rx_read()
 {
-    uint8_t data = wgm_rxdata;
-    // wait for stop bit/idle
-    loop_until_bit_is_set(PINB, WGMRXBIT);
-    PCMSK |= 1<<WGMRXBIT;               // enable Rx ISR
-    PORTB &= ~(1<<WGMRXBIT);            // clear Rx complete flag
+    uint8_t data = wgm_rxdata1;
+    // if PCINT or OC0B INT enabled, clear rxdata1 full
+    //if ( (PCMSK & 1<<WGMRXBIT) || (TIMSK & 1<<OCIE0B) ) {
+    //    PORTB &= ~(1<<WGMRXBIT);        // clear rxdata1 full flag
+    //} else {
+    // OC0A_BIT in OC0A_PORT used to flag rxdata0 full
+    PORTB &= ~(1<<WGMRXBIT);            // clear rxdata1 full flag
+    if (OC0A_PORT & 1<<OC0A_BIT) {
+        // data0 & data1 full, Rx ISR disabled
+        // rxdata0 is full, so copy to rxdata1
+        wgm_rxdata1 = wgm_rxdata0;
+        PORTB |= 1<<WGMRXBIT;           // set rxdata1 full flag
+        OC0A_PORT &= ~(1<<OC0A_BIT);
+        loop_until_bit_is_set(PINB, WGMRXBIT);
+        PCMSK |= 1<<WGMRXBIT;           // enable Rx ISR
+    }
     return data;
 }
 
@@ -112,7 +114,6 @@ void write(uint8_t c) {
     // OC0A still running in SET_ON_MATCH mode during idle
     // stop bit time is finished if OCF0A set
     while ((TIFR & 1<<OCF0A) == 0);
-    // todo: disable/enable interrupts
     TIFR = 1<<OCF0A;
     TCCR0A = CLEAR_ON_MATCH;            // setup for start bit
     // timer0 /8 prescaler, force compare
@@ -123,9 +124,12 @@ void write(uint8_t c) {
     if (c & 0x01)
         TCCR0A = SET_ON_MATCH;
 
+    cli();                              // ISRs also modify TIMSK
+    TIMSK |= 1<<OCIE0A;
+    sei();
+
     // high bit flag for end of byte
     wgm_txdata = (c>>1) | 0x80;
-    TIMSK |= 1<<OCIE0A;
 }
 
 void prints_P(const __flash char* s)
