@@ -10,6 +10,7 @@
 // 20200531 v0.1.1 COMPA & COMPB ISR in asm
 // 20200602 v0.2.0 beta up to 115.2kbps @8M
 // 20200606 v0.3.0 adds 2-level Rx FIFO
+// 20200609 v0.3.1 add t84 compatibility
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -20,8 +21,6 @@
 __attribute(( section(".noinit") )) uint8_t wgm_txdata;
 __attribute(( section(".noinit") )) uint8_t wgm_rxdata0;
 __attribute(( section(".noinit") )) uint8_t wgm_rxdata1;
-
-#define BAUD_RATE 57600
 
 const int LED = 4;
 
@@ -69,26 +68,22 @@ ISR(PCINT0_vect, ISR_NAKED)
 // returns true when there is data to read
 uint8_t rx_data_ready()
 {
-    return (PORTB & 1<<WGMRXBIT);
+    return (WGMRXPORT & 1<<WGMRXBIT);
 }
 
 // todo: ensure no race conditions in rx_read
 uint8_t rx_read()
 {
     uint8_t data = wgm_rxdata1;
-    // if PCINT or OC0B INT enabled, clear rxdata1 full
-    //if ( (PCMSK & 1<<WGMRXBIT) || (TIMSK & 1<<OCIE0B) ) {
-    //    PORTB &= ~(1<<WGMRXBIT);        // clear rxdata1 full flag
-    //} else {
+    WGMRXPORT &= ~(1<<WGMRXBIT);        // clear rxdata1 full flag
     // OC0A_BIT in OC0A_PORT used to flag rxdata0 full
-    PORTB &= ~(1<<WGMRXBIT);            // clear rxdata1 full flag
     if (OC0A_PORT & 1<<OC0A_BIT) {
         // data0 & data1 full, Rx ISR disabled
         // rxdata0 is full, so copy to rxdata1
         wgm_rxdata1 = wgm_rxdata0;
-        PORTB |= 1<<WGMRXBIT;           // set rxdata1 full flag
+        WGMRXPORT |= 1<<WGMRXBIT;       // set rxdata1 full flag
         OC0A_PORT &= ~(1<<OC0A_BIT);
-        loop_until_bit_is_set(PINB, WGMRXBIT);
+        loop_until_bit_is_set(WGMRXPIN, WGMRXBIT);
         PCMSK |= 1<<WGMRXBIT;           // enable Rx ISR
     }
     return data;
@@ -145,10 +140,11 @@ void main() {
     unsigned overflows = 0;
     while (1) {
         if ( rx_data_ready() ) {
+            //_delay_ms(500);             // for rx FIFO testing
             write( rx_read() ); 
         }
         if (TIFR & 1<<TOV0) {
-            TIFR = 1<<TOV0;       // clear overflow flag
+            TIFR = 1<<TOV0;             // clear overflow flag
             overflows++;
         }
         // write a dot and toggle LED every second

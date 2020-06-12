@@ -1,5 +1,6 @@
 ; (c) Ralph Doncaster 2020
-; hardware accelerated UART using Timer0 output compare
+; Non-commercial use and modification of this code is permitted.
+; Any re-distribution must include this notice.
 
 #define __SFR_OFFSET 0
 #include <avr/io.h>
@@ -25,7 +26,7 @@ compa_ISR_off:
     sei
     out TIMSK, r24                  ; disable ISR
     rjmp setOCR
-GLABEL TIM0_COMPA_vect              ; t13
+GLABEL TIM0_COMPA_vect              ; t13 & t84
 GLABEL TIMER0_COMPA_vect            ; t85
     sei                             ; allow other ISRs to run
     in r2, SREG
@@ -50,7 +51,7 @@ reti
 
 ; rx bit ISR 23c incl reti
 ; bit sampled 8 cycles into ISR
-GLABEL TIM0_COMPB_vect              ; t13
+GLABEL TIM0_COMPB_vect              ; t13 & t84
 GLABEL TIMER0_COMPB_vect            ; t85
     in r22, SREG
     push r24
@@ -67,22 +68,18 @@ GLABEL TIMER0_COMPB_vect            ; t85
     in r24, TIMSK
     cbr r24, 1<<OCIE0B
     out TIMSK, r24                  ; disable T0 ISR
-    sbis PORTB, WGMRXBIT            ; rxdata1 full?
+    sbis WGMRXPORT, WGMRXBIT        ; rxdata1 full?
     rjmp copyrxdata
+    ; OC0A_BIT in OC0A_PORT used to flag rxdata0 full
     sbi OC0A_PORT, OC0A_BIT
     rjmp epilogue
 copyrxdata:
     lds r24, wgm_rxdata0
     sts wgm_rxdata1, r24
-    sbi PORTB, WGMRXBIT             ; flag Rx data available
-1:  sbis PINB, WGMRXBIT             ; wait for stop bit
+    sbi WGMRXPORT, WGMRXBIT         ; flag Rx data available
+1:  sbis WGMRXPIN, WGMRXBIT         ; wait for stop bit
     rjmp 1b
-    sbi PCMSK, WGMRXBIT             ; enable PCINT for next byte
+    ldi r24, 1<<WGMRXBIT
+    out PCMSK, r24                  ; enable PCINT for next byte
     rjmp epilogue
 
-
-;.section .noinit, "aw", @nobits
-;.global wgm_txdata
-;wgm_txdata: .zero 1
-;.global wgm_rxdata
-;wgm_rxdata: .zero 1
