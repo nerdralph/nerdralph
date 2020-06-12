@@ -18,7 +18,7 @@
     \name:
 .endm
 
-; tx bit ISR 25c incl reti
+; tx bit ISR 29c incl reti
 compa_ISR_off:
     cli
     in r24, TIMSK
@@ -29,7 +29,8 @@ compa_ISR_off:
 GLABEL TIM0_COMPA_vect              ; t13 & t84
 GLABEL TIMER0_COMPA_vect            ; t85
     sei                             ; allow other ISRs to run
-    in r2, SREG
+    push r24
+    in r24, SREG
     push r24
     lds r24, wgm_txdata
     cpi r24, 0
@@ -44,9 +45,9 @@ setOCR:
     in r24, OCR0A
     ADDI r24, TICKS_PER_BIT
     out OCR0A, r24                  ; 20c, set time for next bit
-GLABEL epilogue                     ; shared ISR epilogue
     pop r24
-    out SREG, r2
+    out SREG, r24
+    pop r24
 reti
 
 ; rx bit ISR 23c incl reti
@@ -81,5 +82,8 @@ copyrxdata:
     rjmp 1b
     ldi r24, 1<<WGMRXBIT
     out PCMSK, r24                  ; enable PCINT for next byte
-    rjmp epilogue
+GLABEL epilogue                     ; shared ISR epilogue
+    pop r24
+    out SREG, r2
+reti
 
