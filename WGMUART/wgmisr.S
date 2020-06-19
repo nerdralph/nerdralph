@@ -54,12 +54,12 @@ reti
 ; bit sampled 8 cycles into ISR
 GLABEL TIM0_COMPB_vect              ; t13 & t84
 GLABEL TIMER0_COMPB_vect            ; t85
-    in r22, SREG
+    in r2, SREG
     push r24
     lds r24, wgm_rxdata0
     bst r24, 0                      ; save LSB in T
     lsr r24
-    sbic PINB, WGMRXBIT             ; 10c
+    sbic PINB, WGMRXBIT             ; 8th cycle
     ori r24, 0x80                   ; rx bit is a 1
     sts wgm_rxdata0, r24
     in r24, OCR0B

@@ -11,6 +11,7 @@
 // 20200602 v0.2.0 beta up to 115.2kbps @8M
 // 20200606 v0.3.0 adds 2-level Rx FIFO
 // 20200609 v0.3.1 add t84 compatibility
+// 20200619 v0.3.2 fix COMPB ISR SREG save bug
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -71,7 +72,6 @@ uint8_t rx_data_ready()
     return (WGMRXPORT & 1<<WGMRXBIT);
 }
 
-// todo: ensure no race conditions in rx_read
 uint8_t rx_read()
 {
     uint8_t data = wgm_rxdata1;
