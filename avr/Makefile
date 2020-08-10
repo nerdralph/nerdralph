@@ -4,21 +4,32 @@
 #DEVICE = atmega8a
 #DEVICE = atmega328p
 DEVICE ?= attiny13
-CPU_SPEED ?= 9600000
+CPU_SPEED ?= 8000000
 # or export DEVICE=atxxxx in shell 
 # export TARGET=app
 
-PROGRAMMER = usbasp -B 3
-#PROGRAMMER = arduino -P com37
+#PROGRAMMER = usbasp -B 4
+PROGRAMMER = arduino -P com2 -b 57600 -vvvv
 
 CXX = avr-gcc --std=gnu++11
 CC = avr-gcc --std=gnu11
 CPPFLAGS += -mmcu=$(DEVICE) -DF_CPU=$(CPU_SPEED)
-CPPFLAGS += -Os -mrelax -Woverflow
+CPPFLAGS += -Os -mrelax -Wall -Wno-main
+#CPPFLAGS += -g
+#CPPFLAGS += -fno-move-loop-invariants
+#CPPFLAGS += -ffixed-r19
 CPPFLAGS += -ffunction-sections -Wl,--gc-sections
 CPPFLAGS += -flto -Wl,-flto
-# CPPFLAGS += -ffreestanding    # int main() not required
+#CPPFLAGS += -Wl,-section-start=.nrmain=0x1000
+#CPPFLAGS += -flto-partition=max
+#CPPFLAGS += -ffreestanding    # int main() not required
 #LDLIBS = libs/libs.a
+#CFLAGS += -nostdlib
+#CPPFLAGS += -nostartfiles
+#CPPFLAGS += pcrt.S
+#LDLIBS = ./pcrt.o
+#CPPFLAGS += -Wl,--undefined=__vectors
+#CPPFLAGS += -Wl,--undefined=__vectors -L. -lpcrt
 #CFLAGS += -nodefaultlibs
 #CFLAGS += -Wl,--defsym,exit=0
 #CFLAGS += -Ilibs/
@@ -48,11 +59,14 @@ sniff: sniff.o sniffASM.o
 $(TARGET).hex: $(TARGET)
 	avr-objcopy -j .text -j .data -O ihex $< $@
 
-%.hex: %
-	avr-objcopy -j .text -j .data -O ihex $< $@
+#%.hex: %
+#	avr-objcopy -j .text -j .data -O ihex $< $@
 
 flash:  $(TARGET).hex
 	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER) -U flash:w:$(TARGET).hex
+
+reset:
+	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER)
 
 eedump:
 	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER) -U eeprom:r:eedump.bin:r
@@ -61,9 +75,17 @@ eedump:
 fuses:
 	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER) -U lfuse:w:0xe2:m
 
-# t13 @ 4.8Mhz
+# t13 @ 9.6Mhz, no EESAVE, SUT=00
+t1396:
+	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER) -U lfuse:w:0x72:m
+
+# t13 @ 4.8Mhz, no EESAVE
 t1348:
-	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER) -U lfuse:w:0x39:m
+	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER) -U lfuse:w:0x79:m
+
+# t13 @ 1.2Mhz, no EESAVE
+t1312:
+	avrdude -C /etc/avrdude.conf -p $(DEVICE) -c $(PROGRAMMER) -U lfuse:w:0x6A:m
 
 # DWEN = bit 3
 t13dwen:
