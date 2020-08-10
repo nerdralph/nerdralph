@@ -60,9 +60,10 @@ int main()
     for (uint8_t i = 0; i <= end; i++) RingPut(i);
     int result = 0;
     while (RingCount()) result += RingGet();
-    if (result == RINGBUFSIZE * (RINGBUFSIZE / 2))
-        return result;
+    int goal = RINGBUFSIZE * (RINGBUFSIZE / 2 - 1) + (RINGBUFSIZE / 2);
+    if (result == goal)
+        return 0;
     else
-        return -1;
+        return 255;
 
 }
