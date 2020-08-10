@@ -1,72 +1,53 @@
+// Ralph Doncaster 2020 picoring
+// small and efficient ring buffer for embedded systems 
+// buffer size must be a power of 2 up to 128 bytes
+// head and tail index range is 2* size 
+// full condition is head == tail, then any added are dropped
+// empty condition is when the difference between head and tail == size
+
 #include <stdint.h>
 
-#define BUFSIZE2N 4
-#if BUFSIZE2N > 7
-#error "2exp(BUFSIZE2N) must be <= 256"
+#ifndef RINGBUFSIZE
+#define RINGBUFSIZE 16
 #endif
 
 typedef struct {
     uint8_t head;
     uint8_t tail;
-    uint8_t buf[1<<BUFSIZE2N];
+    uint8_t buf[RINGBUFSIZE];
 } RingBuf;
 
 //extern RingBuf gRingBuf;
 __attribute(( section(".noinit") ))
 RingBuf gRingBuf;
 
-void RingPut(uint8_t val)
-{
-    uint8_t size = (1<<BUFSIZE2N);
-    if (gRingBuf.head == gRingBuf.tail)
-        return;                         // full
-    gRingBuf.buf[gRingBuf.head & (size -1)] = val;
-    gRingBuf.head = (gRingBuf.head + 1) & (size * 2 - 1);
-}
-
-inline uint8_t RingDiff()
-{
-    char diff = gRingBuf.head - gRingBuf.tail;
-    // ternary operator results in integer promotion
-    //return (diff >= 0) ? diff : -diff;
-    if (diff >= 0) return diff;
-    else return -diff;
-}
-
-/*
-static char RingCanGet()
-{
-    return RingDiff() - (1<<BUFSIZE2N);
-}
-*/
-
-// RingCanGet() should be checked first; no error checking here
-int RingGet()
-{
-    uint8_t size = (1<<BUFSIZE2N);
-    // cast doesn't stop integer promotion
-    //if (abs ( (char)(gRingBuf.head - gRingBuf.tail) ) == size )
-    // abs == nop with & 0xFF
-    //if (abs ( (gRingBuf.head - gRingBuf.tail) & 0xFF) == size )
-    //char diff = gRingBuf.head - gRingBuf.tail;
-    //if (diff == size || diff == -size)
-    //    return -1;                       // empty
-     
-    int val;
-    //if ( ! RingCanGet() ) val = -1; 
-    if ( RingDiff() == size )
-        val = -1;                       // empty
-    else { 
-        gRingBuf.tail = (gRingBuf.tail + 1) & (size * 2 - 1);
-        val = gRingBuf.buf[gRingBuf.tail & (size - 1)];
-    }
-    return val;
-}
-
 void RingInit()
 {
     gRingBuf.tail = 0;
-    gRingBuf.head = (1<<BUFSIZE2N);
+    gRingBuf.head = RINGBUFSIZE;
+}
+
+void RingPut(uint8_t val)
+{
+    if (gRingBuf.head == gRingBuf.tail)
+        return;                         // full
+    gRingBuf.buf[gRingBuf.head & (RINGBUFSIZE -1)] = val;
+    gRingBuf.head = (gRingBuf.head + 1) & (RINGBUFSIZE * 2 - 1);
+}
+
+static uint8_t RingCount()
+{
+    // to understand the math behind RingCount
+    // https://www.approxion.com/circular-adventures-viii-the-eternal-quest-for-mod-like-behavior/ 
+    return (gRingBuf.head - gRingBuf.tail + RINGBUFSIZE) & (RINGBUFSIZE * 2 - 1);
+}
+
+// RingCount() should be checked first; no error checking here
+uint8_t RingGet()
+{
+    uint8_t data =  gRingBuf.buf[gRingBuf.tail & (RINGBUFSIZE - 1)];
+    gRingBuf.tail = (gRingBuf.tail + 1) & (RINGBUFSIZE * 2 - 1);
+    return data;
 }
 
 volatile uint8_t testcount;
@@ -74,9 +55,14 @@ volatile uint8_t testcount;
 int main()
 {
     RingInit();
-    uint8_t end = testcount;
+    // try putting one more than buffer size
+    uint8_t end = testcount + RINGBUFSIZE + 1;
     for (uint8_t i = 0; i <= end; i++) RingPut(i);
-    // try counting RingGet until -1 to avoid optimizer
-    //RingPut(42);
-    return RingGet();
+    int result = 0;
+    while (RingCount()) result += RingGet();
+    if (result == RINGBUFSIZE * (RINGBUFSIZE / 2))
+        return result;
+    else
+        return -1;
+
 }
