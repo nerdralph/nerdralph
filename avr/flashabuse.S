@@ -49,6 +49,7 @@ verify:
     brne fail
     cpi ZL, SPM_PAGESIZE
     brne verify 
+    clr ZL
     ret
 
 ; set page pointed to by Z to all zero
