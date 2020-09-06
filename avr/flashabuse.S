@@ -1,5 +1,7 @@
 ; Ralph Doncaster 2020 public domain software
-; repeatedly erase, verify, write, verify flash at OSCCAL 0xFF
+; 1M erase, verify, write, verify flash cycles at OSCCAL 0xFF
+; then verify cleared page forever
+; http://nerdralph.blogspot.com/2020/09/flashing-avrs-at-high-speed.html 
 
 #define __SFR_OFFSET 0
 
@@ -12,6 +14,7 @@
 #define scratch r16
 #define cnt r17
 #define arg1 r18
+#define CYCLES 1000000
 
 ; LED will flash during testing, stop for failure
 #define LED 5
@@ -23,10 +26,11 @@ main:
     nop                                 ; let oscillator settle
     sbi DDRB, LED
     sbi PORTB, LED
-
-loop:
+    ldi XL, lo8(CYCLES/256)
+    ldi XH, hi8(CYCLES/256)
     ldi ZH, 0x18                        ; page to abuse = 0x1800
     ldi ZL, 0x00
+loop:
     rcall erase
     ; verify erase (all 0xFF) 
     ldi arg1, 0xFF
@@ -36,10 +40,18 @@ loop:
     rcall verify                        ; shold be all 0x00
     subi cnt, 1
     brhc loop                           ; H set every 16th loop
-    sbi PINB, LED                       ; toggle LED
-    rjmp loop
+    sbi PINB, LED                       ; fast toggle LED
+    brcc loop
+    sbiw XL, 1
+    brne loop
+    ; now repeatedly verify
+1:  rcall verify
+    adiw XL, 2
+    brne 1b
+    sbi PINB, LED                       ; slow toggle LED
+    rjmp 1b
 fail:
-    rjmp .-2                            ; done
+    rjmp fail                           ; done
 
 ; verify page pointed to by Z matches arg1
 ; jump to fail on falure
