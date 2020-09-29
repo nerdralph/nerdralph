@@ -1,2 +1,1 @@
-
-include ../make.include
+include ../make.inc
