@@ -12,6 +12,9 @@
 #define USB_SYNC    0x80
 #define USBMSK      (1<<USBDM) | (1<<USBDP)
 
+#define USBDDR      (USBPORT-1)
+#define USBIN       (USBPORT-2)
+
 .data
 txBuf:
 ; PID + <= 8B data + CRC16
@@ -32,6 +35,24 @@ txBuf:
 .extern DDesc
 .extern CDesc
 
+; wait 3 cycles times r19
+; rcall/ret overhead adds 7 cycles
+wait3c_r19:
+    dec r19
+    brne wait3c_r19
+ret
+
+; USB bus reset is SE0 for > 3 bit-times
+waitReset:
+    ldi cnt, 8                          ; want SE0 8 times
+1:
+    in psave, USBIN
+    andi psave, USBMSK
+    brne waitReset
+    dec cnt
+    brne 1b
+ret
+
 .globl main
 main:
     ; want 10.5Mhz
@@ -49,7 +70,7 @@ again:
     ldi mask, USBMSK
     in r0, USBPORT-1
     or r0, mask
-    out USBPORT-1, r0                   ; set DDR
+    out USBDDR, r0                      ; set DDR
     rjmp tx2bit
 
 ; 7-cycle/bit tx loop, cnt = 2 * # of bits to tx
@@ -80,6 +101,7 @@ txEoP:
     sbi USBPORT, USBDM                  ; J/idle state
     cbi USBPORT-1, USBDP                ; input mode
     cbi USBPORT-1, USBDM                ; input mode
+    ; could leave D- pullup enabled?
     cbi USBPORT, USBDM                  ; disable pullup
 delay:
     sbiw Yl, 1
