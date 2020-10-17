@@ -1,6 +1,5 @@
 ; Ralph Doncaster 2020
 ; prototype 7 cycle/bit 10.5MHz USB transmit
-; tx =~ 40 instruction, rx =~ 35 w/o address match
 
 #define __SFR_OFFSET 0
 #include <avr/io.h>
@@ -10,6 +9,8 @@
 #define USBPORT     PORTB
 #define PID_SETUP   0x2D
 #define PID_ACK     0xD2
+#define PID_DATA0   0xc3
+#define PID_DATA1   0x4b
 #define USB_SYNC    0x80
 #define USBMSK      (1<<USBDM) | (1<<USBDP)
 
@@ -24,25 +25,21 @@ rxBuf:
 ; PID + 8B data, CRC16 ignored
 .skip 1 + 8
 
-
-;DDesc:
-;.byte   18          ; length
-;.byte   1           ; descriptor type
-;.word   0x0110      ; USB version 1.1
-
-#define usbAddr r2
-#define txLen r16
-#define data r18
-#define cnt r19
-#define mask r20
-#define psave r21
-#define even r22
-#define odd r23
-#define nop2 rjmp .
-
 .text
 .extern DDesc
 .extern CDesc
+
+
+#define usbAddr r2
+#define usbPID  r3
+#define txLen   r16
+#define data    r18
+#define cnt     r19
+#define mask    r20
+#define psave   r21
+#define even    r22
+#define odd     r23
+#define nop2    rjmp .
 
 error:
     rjmp error
@@ -70,7 +67,7 @@ awaitSE0:
 ret:
 ret
 
-; copy descriptor chunk <= 10B from flash to RAM
+; copy descriptor chunk <= 10B from flash to RAM & toggle DATA PID
 cpDescrChunk:
     ldi cnt, 10
     cpi txLen, 10                       ; max 8B + 2B CRC
@@ -80,6 +77,9 @@ cpDescrChunk:
     sub txLen, cnt
     ldi XL, lo8(txBuf)
     ldi XH, hi8(txBuf)
+    ldi data, PID_DATA0 ^ PID_DATA1
+    eor usbPID, data
+    st X+, usbPID
 copy:
     lpm r0, Z+
     st X+, r0
@@ -88,10 +88,9 @@ copy:
 ret
 
 
-#define bitcnt cnt
 ; wait for Token packet
 getToken:
-    ldi bitcnt, 255 - 2                 ; read 2 bytes after sync
+    ldi cnt, 2                          ; read 2 bytes after sync
     rcall awaitPacket
     ldi r24, 2
     rcall awaitSE0                      ; wait for EOP
@@ -99,14 +98,16 @@ getToken:
     brne getToken                       ; no address match
     ld data, -X                         ; get PID
     cpi data,  PID_SETUP
-    brne error
-    ldi bitcnt, 255 - 8                 ; read 8 byte setup request
-    rcall awaitPacket
-    sbiw XL, 7                          ; rewind X to rxBuf
-    
+    brne error                          ; check for IN/OUT
+    ldi cnt, 9                          ; want 9 bytes
+    rcall awaitPacket                   ; read setup request
+    sbiw XL, 7                          ; rewind X to rxBuf after PID
+     
 
+#define bitcnt cnt
 ; wait for USB communication, idle = J, USBDM high & USBDP low
 ; all packets start with sync: KJKJKJKK, then PID
+; read cnt bytes into rxBuf, X points to last byte on return
 awaitPacket:
     sbic USBIN, USBDM
     rjmp awaitPacket
@@ -128,16 +129,15 @@ checkSE0:
     andi psave, USBMSK
     brne awaitPacket                    ; skip keepalive
     clr usbAddr                         ; got bus reset
-    ldi ZL, lo8(DDesc)
-    ldi ZH, hi8(DDesc)
+    ;ldi ZL, lo8(DDesc)
+    ;ldi ZH, hi8(DDesc)
     rcall awaitPacket
 
 gotK:
     ; 3-5 cycles after JK transistion on 1st round
     ldi XL, lo8(rxBuf)                  ; 3
     ldi XH, hi8(rxBuf)                  ; 4
-#define numBytes 2
-    ldi bitcnt, 255 - numBytes          ; 5
+    com bitcnt                          ; 5 bitcnt = 255 - cnt
     nop2                                ; 6
     nop2                                ; 8
     sbic USBIN, USBDM                   ; 10 - sample bit
@@ -188,6 +188,8 @@ main:
     in r24, OSCCAL
     subi r24, -7
     out OSCCAL, r24
+    ldi r24, PID_DATA0
+    mov usbPID, r24
 again:
     ldi XL, lo8(txBuf)
     ldi XH, hi8(txBuf)
