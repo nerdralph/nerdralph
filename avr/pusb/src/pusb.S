@@ -197,7 +197,7 @@ again:
     ldi cnt, 256 - 2*16
     sbi USBPORT, USBDM                  ; J/idle state
     ldi mask, USBMSK
-    in r0, USBPORT-1
+    in r0, USBDDR
     or r0, mask
     out USBDDR, r0                      ; set DDR
     rjmp tx2bit
@@ -208,12 +208,12 @@ nextByte:
     ld data, X+
 tx2bit:
     sbrs data, 0
-    out USBPORT-2, mask
+    out USBIN, mask
     lpm
     lsr data
     subi cnt, -4
     sbrs data, 0
-    out USBPORT-2, mask
+    out USBIN, mask
 1:
     brhc nextByte   ; subi modifies H
     lsr data
@@ -224,7 +224,7 @@ txEoP:
     in data, USBPORT
     cbr data, USBMSK
     out USBPORT, data 
-    rcall doRet
+    rcall ret
     lpm
     nop2
     sbi USBPORT, USBDM                  ; J/idle state
@@ -232,14 +232,18 @@ txEoP:
     cbi USBPORT-1, USBDM                ; input mode
     ; could leave D- pullup enabled?
     cbi USBPORT, USBDM                  ; disable pullup
+#if 0
 delay:
     sbiw Yl, 1
     brne delay
     rjmp again
 doRet:
+#endif
     ret
 
 #define cnt7bit r22
+#if 0
+; 12 instr
 v2tx:
     sbrs data, 0
     out USBPORT-2, mask
@@ -284,4 +288,4 @@ v4tx:
     out USBPORT, psave                  ; bit 7
     ld data, X+
     brne v2tx
-
+#endif
