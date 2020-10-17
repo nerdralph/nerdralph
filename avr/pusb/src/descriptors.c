@@ -6,7 +6,7 @@
 
 // todo: define DeviceDesc struct
 // combined device and configuration descriptor 
-const uint8_t DDesc[] = {
+const __flash uint8_t DDesc[] = {
     // device descriptor
     18 + 1,                 // sizeof(descriptor): length in bytes + salt
     1,                      // device descriptor type
@@ -28,7 +28,7 @@ const uint8_t DDesc[] = {
     0x8F, 0xAF,             // CRC16
 };
 
-const uint8_t CDesc[] = {
+const __flash uint8_t CDesc[] = {
     // configuration descriptor
     9,                      // sizeof(descriptor): length in bytes
     2,                      // config descriptor type
