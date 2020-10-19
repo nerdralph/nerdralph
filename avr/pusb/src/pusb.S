@@ -7,15 +7,21 @@
 #define USBDM       0
 #define USBDP       1
 #define USBPORT     PORTB
+#define USB_SYNC    0x80
+#define USBMSK      (1<<USBDM) | (1<<USBDP)
+#define USBDDR      (USBPORT-1)
+#define USBIN       (USBPORT-2)
+
+// USB packet IDs
 #define PID_SETUP   0x2D
+#define PID_OUT     0xe1
+#define PID_IN      0x69
 #define PID_ACK     0xD2
 #define PID_DATA0   0xc3
 #define PID_DATA1   0x4b
-#define USB_SYNC    0x80
-#define USBMSK      (1<<USBDM) | (1<<USBDP)
 
-#define USBDDR      (USBPORT-1)
-#define USBIN       (USBPORT-2)
+#define SET_ADDRESS       5
+#define GET_DESCRIPTOR    6
 
 .data
 txBuf:
@@ -31,7 +37,8 @@ rxBuf:
 
 
 #define usbAddr r2
-#define usbPID  r3
+#define newAddr r3
+#define usbPID  r4
 #define txLen   r16
 #define data    r18
 #define cnt     r19
@@ -88,29 +95,44 @@ copy:
 ret
 
 
-; wait for Token packet
+; wait for Token packet - IN, OUT, or SETUP
 getToken:
     ldi cnt, 2                          ; read 2 bytes after sync
-    rcall awaitPacket
+    rcall readPacket
     ldi r24, 2
     rcall awaitSE0                      ; wait for EOP
     cp data, usbAddr
     brne getToken                       ; no address match
     ld data, -X                         ; get PID
     cpi data,  PID_SETUP
-    brne error                          ; check for IN/OUT
+    brne pidIn                          ; check for IN/OUT
     ldi cnt, 9                          ; want 9 bytes
-    rcall awaitPacket                   ; read setup request
-    sbiw XL, 7                          ; rewind X to rxBuf after PID
-     
+    rcall readPacket                    ; read setup request
+    sbiw XL, 6                          ; rewind X to bRequest
+    ld data, X+
+    cpi data, GET_DESCRIPTOR
+    brne setAddress
+    ldi ZL, lo8(DDesc)
+    ldi ZH, hi8(DDesc)
+setAddress:
+    cpi data, SET_ADDRESS
+    brne userFunction
+    ld newAddr, X
+    ; reply zero-len descriptor
+pidIn:
+    cpi data,  PID_IN
+    brne pidOut
+pidOut:
+userFunction:
+    rjmp error
 
 #define bitcnt cnt
 ; wait for USB communication, idle = J, USBDM high & USBDP low
 ; all packets start with sync: KJKJKJKK, then PID
 ; read cnt bytes into rxBuf, X points to last byte on return
-awaitPacket:
+readPacket:
     sbic USBIN, USBDM
-    rjmp awaitPacket
+    rjmp readPacket
     rcall ret                           ; 7c delay
     sbis USBIN, USBDM                   ; got J
     rjmp checkSE0
@@ -127,11 +149,9 @@ checkSE0:
     rcall wait10c
     in psave, USBIN
     andi psave, USBMSK
-    brne awaitPacket                    ; skip keepalive
+    brne readPacket                     ; skip keepalive
     clr usbAddr                         ; got bus reset
-    ;ldi ZL, lo8(DDesc)
-    ;ldi ZH, hi8(DDesc)
-    rcall awaitPacket
+    rcall readPacket
 
 gotK:
     ; 3-5 cycles after JK transistion on 1st round
@@ -181,7 +201,6 @@ rxSave:
     ; fall through for rx complete
 ret
 
-
 .globl main
 main:
     ; want 10.5Mhz
@@ -190,7 +209,7 @@ main:
     out OSCCAL, r24
     ldi r24, PID_DATA0
     mov usbPID, r24
-again:
+txACK:
     ldi XL, lo8(txBuf)
     ldi XH, hi8(txBuf)
     ldi data, USB_SYNC
