@@ -14,11 +14,12 @@
 
 // USB packet IDs
 #define PID_SETUP   0x2D
-#define PID_OUT     0xe1
+// PID_SETUP = 0x2D
+#define PID_OUT     0xE1
 #define PID_IN      0x69
 #define PID_ACK     0xD2
-#define PID_DATA0   0xc3
-#define PID_DATA1   0x4b
+#define PID_DATA0   0xC3
+#define PID_DATA1   0x4B
 
 #define SET_ADDRESS       5
 #define GET_DESCRIPTOR    6
@@ -36,16 +37,19 @@ rxBuf:
 .extern CDesc
 
 
-#define usbAddr r2
-#define newAddr r3
-#define usbPID  r4
-#define txLen   r16
-#define data    r18
-#define cnt     r19
-#define mask    r20
-#define psave   r21
-#define even    r22
-#define odd     r23
+; register assignments
+; todo: differentiate local vs global registers
+
+usbAddr = 2
+newAddr = 3
+usbPID  = 4
+tmpr5   = 5
+txLen   = 16
+data    = 18
+cnt     = 19
+mask    = 20                            ; USB D+/D- mask
+psave   = 21                            ; port save
+
 #define nop2    rjmp .
 
 error:
@@ -75,6 +79,9 @@ ret:
 ret
 
 ; copy descriptor chunk <= 10B from flash to RAM & toggle DATA PID
+; args: cnt, Z
+; caller sets Z to descriptor address in flash
+; caller sets cnt to number of bytes to copy
 cpDescrChunk:
     ldi cnt, 10
     cpi txLen, 10                       ; max 8B + 2B CRC
@@ -126,7 +133,9 @@ pidOut:
 userFunction:
     rjmp error
 
-#define bitcnt cnt
+; register allocations for readPacket
+even    = 22
+odd     = 23
 ; wait for USB communication, idle = J, USBDM high & USBDP low
 ; all packets start with sync: KJKJKJKK, then PID
 ; read cnt bytes into rxBuf, X points to last byte on return
@@ -157,7 +166,7 @@ gotK:
     ; 3-5 cycles after JK transistion on 1st round
     ldi XL, lo8(rxBuf)                  ; 3
     ldi XH, hi8(rxBuf)                  ; 4
-    com bitcnt                          ; 5 bitcnt = 255 - cnt
+    mov tmpr5, cnt                      ; 5
     nop2                                ; 6
     nop2                                ; 8
     sbic USBIN, USBDM                   ; 10 - sample bit
@@ -167,8 +176,6 @@ gotK:
     lpm $ lpm                           ; 12 + 6c = 18c for next opcode
 rxData:
     ; 2 bits unrolled * 3, + 6/7 unrolled
-    ; ldi bitcnt, 255 - numBytes          ; 85 * 3 = 255
-rxbit:
     in even, USBIN                      ; bits 2 & 4
     rjmp 1f
 rxSave:
@@ -183,8 +190,9 @@ rxSave:
     eor even, odd
     subi even, 1
     ror data
-    subi bitcnt, 85                     ; 85 * 3 = 255
-    brcc rxbit
+    ; 85 * 3 = -1, so cnt decreases by 1 for every byte 
+    subi cnt, -85
+    brcs rxData
 
     in even, USBIN                      ; bit 6
     eor odd, even
@@ -196,7 +204,7 @@ rxSave:
     eor even, odd
     subi even, 1
     ror data
-    cpi bitcnt, -1
+    tst cnt
     brne rxSave
     ; fall through for rx complete
 ret
@@ -207,6 +215,7 @@ main:
     in r24, OSCCAL
     subi r24, -7
     out OSCCAL, r24
+
     ldi r24, PID_DATA0
     mov usbPID, r24
 txACK:
@@ -215,84 +224,51 @@ txACK:
     ldi data, USB_SYNC
     ldi r24, PID_ACK
     st x, r24
-    ldi cnt, 256 - 2*16
+    ldi cnt, 2
     sbi USBPORT, USBDM                  ; J/idle state
     ldi mask, USBMSK
     in r0, USBDDR
     or r0, mask
     out USBDDR, r0                      ; set DDR
-    rjmp tx2bit
-
-; 7-cycle/bit tx loop, cnt = 2 * # of bits to tx
-nextByte:
-    breq txEoP
-    ld data, X+
-tx2bit:
-    sbrs data, 0
-    out USBIN, mask
-    lpm
-    lsr data
-    subi cnt, -4
-    sbrs data, 0
-    out USBIN, mask
-1:
-    brhc nextByte   ; subi modifies H
-    lsr data
-    nop
-    rjmp tx2bit
-
-txEoP:
-    in data, USBPORT
-    cbr data, USBMSK
-    out USBPORT, data 
-    rcall ret
-    lpm
-    nop2
-    sbi USBPORT, USBDM                  ; J/idle state
-    cbi USBPORT-1, USBDP                ; input mode
-    cbi USBPORT-1, USBDM                ; input mode
-    ; could leave D- pullup enabled?
-    cbi USBPORT, USBDM                  ; disable pullup
-#if 0
-delay:
-    sbiw Yl, 1
-    brne delay
-    rjmp again
-doRet:
-#endif
-    ret
+    in psave, USBPORT
 
 #define cnt7bit r22
-#if 0
-; 12 instr
-v2tx:
-    sbrs data, 0
-    out USBPORT-2, mask
-    nop
-    lsr data
-    subi cnt7bit, 37                    ; 256/7 = 36.57 
-    brcc v2tx
-    dec cnt
-    sbrs data, 0
-    out USBPORT-2, mask
-    ld data, X+
-    nop
-    brne v2tx
+cnt7bit = 22
+; 7-cycle/bit tx loop, 13 instr
+    ldi cnt7bit, 255                    ; good for 37/3 == 12 loops/bytes
+txByte:
+    sbrs data, 0                        ; [5]
+    eor psave, mask                     ; [6]
+    out USBPORT, psave                  ; [7] write bits 0-6
+    lsr data                            ; [1]
+    subi cnt7bit, 37                    ; [2] 256/7 = 36.57 
+    brcc txByte                         ; [3]
+    sbrs data, 0                        ; [4]
+    eor psave, mask                     ; [5]
+    dec cnt                             ; [6]
+    out USBPORT, psave                  ; [7] write bit 7
+    ld data, X+                         ; [1]
+    brne txByte                         ; [3]
 
-; doesn't require PIN reg write for toggle, 12 instr
-v3tx:
-    sbrs data, 0
-    eor psave, mask
-    out USBPORT, psave                  ; bits 0-6
-    lsr data
-    subi cnt7bit, 37                    ; 256/7 = 36.57 
-    brcc v2tx
-    dec cnt
-    sbrs data, 0
-    eor psave, mask
-    out USBPORT, psave                  ; bit 7
-    ld data, X+
-    brne v2tx
+    ; now 3 cycles into last bit
+txEoP:
+    nop                                 ; [4] 
+    ldi r19, 2                          ; [5] for wait3c_r19
+    cbr psave, USBMSK                   ; [6] 
+    out USBPORT, psave                  ; [7] SE0 for 2bit = 14c
+    rcall wait3c_r19                    ; [1] 12c delay
+    sbi USBPORT, USBDM                  ; [13] J/idle state on 2nd cycle
+    cbi USBDDR, USBDP                   ; input mode
+    cbi USBDDR, USBDM                   ; input mode
+    ; could leave D- pullup enabled?
+    cbi USBPORT, USBDM                  ; disable pullup
+    ret
+
+;cnt7bit = 21
+
+    clr cnt7bit
+
+#if 0
 
 ; half-C cnt not limited to 11 byte like cnt7bit, 12 instr
 ; will fail due to no subi cnt for bit 7
