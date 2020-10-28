@@ -37,6 +37,9 @@ rxBuf:
 .extern CDesc
 
 
+usbAck:
+.byte PID_ACK, 0                        ; 0 needed for 2-byte alignment
+
 ; register assignments
 ; todo: differentiate local vs global registers
 
@@ -78,6 +81,7 @@ awaitSE0:
 ret:
 ret
 
+#if 0
 ; copy descriptor chunk <= 10B from flash to RAM & toggle DATA PID
 ; args: cnt, Z
 ; caller sets Z to descriptor address in flash
@@ -100,7 +104,7 @@ copy:
     dec cnt
     brne copy
 ret
-
+#endif 
 
 ; wait for Token packet - IN, OUT, or SETUP
 getToken:
@@ -183,7 +187,7 @@ rxSave:
     st X+, data
 1:  nop
     eor odd, even
-    subi odd, 1
+    subi odd, 1                         ; set C if last 2 bits are the same
     ror data
 
     in odd, USBIN                       ; bits 1, 3 & 5
@@ -196,7 +200,7 @@ rxSave:
 
     in even, USBIN                      ; bit 6
     eor odd, even
-    subi odd, 1
+    subi odd, 1                         ; set C if last 2 bits are the same
     ror data
     lpm                                 ; 3c delay
 
@@ -218,37 +222,40 @@ main:
 
     ldi r24, PID_DATA0
     mov usbPID, r24
+
+; todo: make a dedicated ACK buffer?
 txACK:
-    ldi XL, lo8(txBuf)
-    ldi XH, hi8(txBuf)
+    ldi ZL, lo8(usbAck)
+    ldi ZH, hi8(usbAck)
+    ldi cnt, 1
+
+; txPacket register assignments
+cnt7bit = 22
+; transmit packet of cnt bytes in flash pointed to by Z
+txPacket:
     ldi data, USB_SYNC
-    ldi r24, PID_ACK
-    st x, r24
-    ldi cnt, 2
     sbi USBPORT, USBDM                  ; J/idle state
     ldi mask, USBMSK
     in r0, USBDDR
     or r0, mask
     out USBDDR, r0                      ; set DDR
-    in psave, USBPORT
 
-#define cnt7bit r22
-cnt7bit = 22
 ; 7-cycle/bit tx loop, 13 instr
     ldi cnt7bit, 255                    ; good for 37/3 == 12 loops/bytes
+txBit:
+    nop                                 ; [5]
 txByte:
-    sbrs data, 0                        ; [5]
-    eor psave, mask                     ; [6]
-    out USBPORT, psave                  ; [7] write bits 0-6
+    sbrs data, 0                        ; [6]
+    out USBPORT, mask                   ; [7] write bits 0-6
     lsr data                            ; [1]
     subi cnt7bit, 37                    ; [2] 256/7 = 36.57 
-    brcc txByte                         ; [3]
-    sbrs data, 0                        ; [4]
-    eor psave, mask                     ; [5]
-    dec cnt                             ; [6]
-    out USBPORT, psave                  ; [7] write bit 7
-    ld data, X+                         ; [1]
-    brne txByte                         ; [3]
+    brcc txBit                          ; [3]
+    nop                                 ; [4]
+    dec cnt                             ; [5]
+    sbrs data, 0                        ; [6]
+    out USBPORT, mask                   ; [7] write bit 7
+    lpm data, Z+                        ; [1]
+    brpl txByte                         ; [4]
 
     ; now 3 cycles into last bit
 txEoP:
@@ -264,25 +271,11 @@ txEoP:
     cbi USBPORT, USBDM                  ; disable pullup
     ret
 
-;cnt7bit = 21
-
-    clr cnt7bit
-
 #if 0
-
-; half-C cnt not limited to 11 byte like cnt7bit, 12 instr
-; will fail due to no subi cnt for bit 7
-v4tx:
-    sbrs data, 0
-    eor psave, mask
-    out USBPORT, psave                  ; bits 0-6
-    lsr data
-    subi cnt, -2
-    brhs v4tx
-    sbrs data, 0
-    eor psave, mask
-    tst cnt
-    out USBPORT, psave                  ; bit 7
-    ld data, X+
-    brne v2tx
+    ldi bitcnt, 7
+txSync:
+    out USBPORT, mask                   ; toggle D+ & D-
+    lpm                                 ; 3c delay
+    dec bitcnt
+    brne txSync
 #endif
