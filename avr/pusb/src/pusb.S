@@ -25,9 +25,9 @@
 #define GET_DESCRIPTOR    6
 
 .data
-txBuf:
+; txBuf:
 ; PID + <= 8B data + CRC16
-.skip 1 + 8 + 2
+; .skip 1 + 8 + 2
 rxBuf:
 ; PID + 8B data, CRC16 ignored
 .skip 1 + 8
@@ -38,7 +38,7 @@ rxBuf:
 
 
 usbAck:
-.byte PID_ACK, 0                        ; 0 needed for 2-byte alignment
+.byte PID_ACK, 0                        ; 0 pad for 2-byte alignment
 
 ; register assignments
 ; todo: differentiate local vs global registers
@@ -82,6 +82,7 @@ ret:
 ret
 
 #if 0
+; cpDescrChunk no longer needed with direct tx from flash
 ; copy descriptor chunk <= 10B from flash to RAM & toggle DATA PID
 ; args: cnt, Z
 ; caller sets Z to descriptor address in flash
@@ -223,14 +224,15 @@ main:
     ldi r24, PID_DATA0
     mov usbPID, r24
 
-; todo: make a dedicated ACK buffer?
+; txPacket register assignments
+; todo: use txSync, then load data with PID
+cnt7bit = 22
+byteCnt = 19
 txACK:
     ldi ZL, lo8(usbAck)
     ldi ZH, hi8(usbAck)
-    ldi cnt, 1
+    ldi byteCnt, 1
 
-; txPacket register assignments
-cnt7bit = 22
 ; transmit packet of cnt bytes in flash pointed to by Z
 txPacket:
     ldi data, USB_SYNC
@@ -246,14 +248,14 @@ txBit:
     nop                                 ; [5]
 txByte:
     sbrs data, 0                        ; [6]
-    out USBPORT, mask                   ; [7] write bits 0-6
+    out USBIN, mask                     ; [7] write bits 0-6
     lsr data                            ; [1]
     subi cnt7bit, 37                    ; [2] 256/7 = 36.57 
     brcc txBit                          ; [3]
     nop                                 ; [4]
-    dec cnt                             ; [5]
+    dec byteCnt                         ; [5]
     sbrs data, 0                        ; [6]
-    out USBPORT, mask                   ; [7] write bit 7
+    out USBIN, mask                     ; [7] write bit 7
     lpm data, Z+                        ; [1]
     brpl txByte                         ; [4]
 
