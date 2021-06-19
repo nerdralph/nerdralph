@@ -1,5 +1,6 @@
 /* AVR software SPI in optimized assembler
- * @author: Ralph Doncaster 2015
+ * author: Ralph Doncaster 2015
+ * open source MIT licence
  * functions follow avr-libc calling convention (r24)
  */
 
